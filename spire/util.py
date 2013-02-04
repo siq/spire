@@ -7,7 +7,7 @@ from types import ModuleType
 from urllib import urlencode
 from urllib2 import urlopen
 from urlparse import urlparse, urlunparse
-from uuid import uuid4
+from uuid import uuid4, uuid5
 
 def call_with_supported_params(callable, *args, **params):
     arguments = getargspec(callable)[0]
@@ -174,6 +174,9 @@ def get_url(url, **params):
         url = urlunparse(segments)
 
     return urlopen(url)
+
+def nsuniqid(namespace, name):
+    return str(uuid5(namespace, name))
 
 def pluralize(word, quantity=None, rules=PLURALIZATION_RULES):
     if quantity == 1: 
