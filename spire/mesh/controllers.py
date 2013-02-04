@@ -172,8 +172,21 @@ class ModelController(Unit, Controller):
             .order_by(literal_column('__subset__.rank')))
 
         resources = []
-        for instance in query.all():
-            resources.append(self._construct_resource(request, instance, data))
+        instances = list(query.all())
+
+        instance = (instances.pop(0) if instances else None)
+        for id in candidates:
+            if instance:
+                if instance.id == id:
+                    resources.append(self._construct_resource(request, instance, data))
+                    if instances:
+                        instance = instances.pop(0)
+                    else:
+                        instance = None
+                else:
+                    resources.append(None)
+            else:
+                resources.append(None)
 
         response(resources)
 
