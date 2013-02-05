@@ -176,7 +176,7 @@ def get_url(url, **params):
     return urlopen(url)
 
 def nsuniqid(namespace, name):
-    return str(uuid5(namespace, name))
+    return str(uuid5(namespace, str(name)))
 
 def pluralize(word, quantity=None, rules=PLURALIZATION_RULES):
     if quantity == 1: 
