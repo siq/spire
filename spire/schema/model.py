@@ -50,7 +50,7 @@ class ModelMeta(DeclarativeMeta):
         if not isinstance(schema, Schema):
             schema = Schema(schema)
 
-        namespace['schema'] = schema
+        namespace['_spire_schema'] = schema
         namespace['metadata'] = schema.metadata
 
         abstract = meta.pop('abstract', False)
