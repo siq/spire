@@ -77,6 +77,13 @@ class SchemaInterface(Unit):
     def session(self):
         return self.get_session()
 
+    def construct_model(self, base, tablename, attributes, title=None, **params):
+        params.update(schema=self.schema, tablename=tablename)
+        meta = type('meta', (), params)
+
+        attributes.update(meta=meta)
+        return type(str(title or tablename), (base,), attributes)
+
     def create_or_update_table(self, table, **tokens):
         engine = self.get_engine(**tokens)
         try:
