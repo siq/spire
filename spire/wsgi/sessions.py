@@ -31,7 +31,7 @@ class SessionMiddleware(Unit, Middleware):
         'cookie': Structure({
             'name': Text(nonnull=True, min_length=1, default='sessionid'),
             'max_age': Integer(minimum=0),
-            'secure': Boolean(default=True),
+            'secure': Boolean(default=False),
         }, generate_default=True, required=True),
         'store': Structure(
             structure={
