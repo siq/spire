@@ -111,27 +111,35 @@ class ModelController(Unit, Controller):
     def __construct__(cls):
         Controller.__construct__()
         if cls.resource:
+            cls._composite_key = cls.resource.composite_key
+            cls._id_field = cls.resource.id_field.name
+
             cls.default_fields = set()
             for name, field in cls.resource.schema.iteritems():
                 if field.is_identifier or not field.deferred:
                     cls.default_fields.add(name)
 
-            mapping = cls.polymorphic_mapping
-            if mapping:
-                for identity, submapping in mapping.items():
-                    mapping[identity] = parse_attr_mapping(submapping)
-                return
-
             attr = cls.polymorphic_on
             if attr and not isinstance(attr, tuple):
                 cls.polymorphic_on = (attr, attr)
 
-            mapping = cls.mapping
-            if mapping is None:
-                mapping = cls.resource.filter_schema().keys()
-            cls.mapping = parse_attr_mapping(mapping)
+            mapping = cls.polymorphic_mapping
+            if mapping:
+                for identity, submapping in mapping.items():
+                    mapping[identity] = parse_attr_mapping(submapping)
+            else:
+                mapping = cls.mapping
+                if mapping is None:
+                    mapping = cls.resource.filter_schema().keys()
+                cls.mapping = parse_attr_mapping(mapping)
 
     def acquire(self, subject):
+        if self._composite_key:
+            try:
+                subject = subject.split(';')
+            except Exception:
+                return None
+
         try:
             return self.schema.session.query(self.model).get(subject)
         except NoResultFound:
@@ -139,18 +147,18 @@ class ModelController(Unit, Controller):
 
     def create(self, request, response, subject, data):
         returning = data.pop(RETURNING, None)
-
         instance = self.model.polymorphic_create(self._construct_model(data))
-        self._annotate_model(request, instance, data)
 
+        self._annotate_model(request, instance, data)
         self.schema.session.add(instance)
+
         self.schema.session.commit()
         response(self._construct_returning(instance, returning))
 
     def delete(self, request, response, subject, data):
         subject.session.delete(subject)
         subject.session.commit()
-        response({'id': self._get_model_value(subject, 'id')})
+        response({'id': self._get_id_value(subject)})
 
     def get(self, request, response, subject, data):
         response(self._construct_resource(request, subject, data))
@@ -233,6 +241,9 @@ class ModelController(Unit, Controller):
 
         response(self._construct_returning(subject, returning))
 
+    def _annotate_filter(self, query, filter, value):
+        pass
+
     def _annotate_model(self, request, model, data):
         pass
 
@@ -243,15 +254,22 @@ class ModelController(Unit, Controller):
         return query
 
     def _construct_filters(self, query, filters):
-        model, operators = self.model, self.operators
+        model = self.model
+        mapping = self._get_mapping(model)
+        operators = self.operators
+
         for filter, value in filters.iteritems():
+            annotation = self._annotate_filter(query, filter, value)
+            if annotation:
+                query = annotation
+                continue
+
             attr, operator = filter, 'equal'
             if '__' in filter:
                 attr, operator = filter.rsplit('__', 1)
 
-            column = getattr(model, self.mapping[attr])
+            column = getattr(model, mapping[attr])
             if not column:
-                # TODO
                 continue
 
             constructor = getattr(operators, operator + '_op')
@@ -268,14 +286,18 @@ class ModelController(Unit, Controller):
         for name, attr in mapping.iteritems():
             if name in data:
                 model[attr] = data[name]
+        
+        if self._composite_key and 'id' in model:
+            del model['id']
         return model
 
     def _construct_resource(self, request, model, data, **resource):
         mapping = self._get_mapping(model)
         fields = FieldFilter(self, data)
 
+        resource['id'] = self._get_id_value(model)
         for name, attr in mapping.iteritems():
-            if name in fields:
+            if name in fields and name != 'id':
                 try:
                     resource[name] = getattr(model, attr)
                 except AttributeError:
@@ -288,7 +310,8 @@ class ModelController(Unit, Controller):
         if response is None:
             response = {}
         if 'id' not in response:
-            response['id'] = self._get_model_value(model, 'id')
+            response['id'] = self._get_id_value(model)
+
         if returning:
             mapping = self._get_mapping(model)
             for name in returning:
@@ -300,6 +323,9 @@ class ModelController(Unit, Controller):
         return response
 
     def _construct_sorting(self, query, sorting):
+        model = self.model
+        mapping = self._get_mapping(model)
+
         columns = []
         for attr in sorting:
             direction = asc
@@ -309,7 +335,7 @@ class ModelController(Unit, Controller):
                 attr = attr[:-1]
                 direction = desc
 
-            column = getattr(self.model, self.mapping[attr])
+            column = getattr(model, mapping[attr])
             if not column:
                 continue
 
@@ -317,15 +343,22 @@ class ModelController(Unit, Controller):
 
         return query.order_by(*columns)
 
+    def _get_id_value(self, model):
+        mapping = self._get_mapping(model)
+        if self._composite_key:
+            values = []
+            for key in self._composite_key:
+                values.append(getattr(model, mapping[key]))
+            return ';'.join(values)
+        else:
+            return getattr(model, mapping['id'])
+
     def _get_mapping(self, model):
         if self.polymorphic_on:
             identity = getattr(model, self.polymorphic_on[1])
             return self.polymorphic_mapping[identity]
         else:
             return self.mapping
-
-    def _get_model_value(self, model, name):
-        return getattr(model, self.mapping[name])
 
 def support_returning(method):
     def wrapper(self, request, response, subject, data):
