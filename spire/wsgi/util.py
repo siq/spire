@@ -1,5 +1,6 @@
 from scheme import Boolean, Sequence, Text
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import HTTPException, InternalServerError, NotFound
+from werkzeug.wrappers import Request, Response
 
 from spire.core import Configuration, Unit
 from spire.local import ContextLocals
@@ -47,6 +48,16 @@ class Mount(Unit):
             ContextLocals.purge()
 
     def dispatch(self, environ, start_response):
+        try:
+            response = Response()
+            self._dispatch_request(Request(environ), response)
+            return response(environ, start_response)
+        except HTTPException, error:
+            return error(environ, start_response)
+        except Exception:
+            return InternalServerError()(environ, start_response)
+
+    def _dispatch_request(self, request, response):
         raise NotImplementedError()
 
 class MiddlewareWrapper(object):

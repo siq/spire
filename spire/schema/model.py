@@ -141,6 +141,22 @@ class ModelBase(object):
         return extraction
 
     @classmethod
+    def get_polymorphic_implementation(cls, data):
+        column = cls.__mapper__.polymorphic_on
+        if column is None or cls.__mapper__.polymorphic_identity:
+            return cls
+
+        identity = data.get(column.name)
+        if not identity:
+            raise ValueError(data)
+
+        mapper = cls.__mapper__.polymorphic_map.get(identity)
+        if mapper:
+            return mapper.class_
+        else:
+            raise ValueError(identity)
+
+    @classmethod
     def load(cls, session, lockmode=None, **filters):
         query = session.query(cls).filter_by(**filters)
         if lockmode:
@@ -149,19 +165,8 @@ class ModelBase(object):
 
     @classmethod
     def polymorphic_create(cls, data):
-        column = cls.__mapper__.polymorphic_on
-        if column is None or cls.__mapper__.polymorphic_identity:
-            return cls(**data)
-
-        identity = data.get(column.name)
-        if not identity:
-            raise ValueError(data)
-
-        mapper = cls.__mapper__.polymorphic_map.get(identity)
-        if mapper:
-            return mapper.class_(**data)
-        else:
-            raise ValueError(identity)
+        implementation = cls.get_polymorphic_implementation(data)
+        return implementation(**data)
 
     def update_with_mapping(self, mapping=None, attrs=None, ignore=None, **params):
         if isinstance(attrs, basestring):

@@ -12,6 +12,9 @@ class Dialect(object):
     def construct_alter_table(self, table, additions=None, removals=None):
         raise NotImplementedError()
 
+    def construct_lock_table(self, tablename, mode):
+        raise NotImplementedError()
+
     def create_database(self, url, name, conditional=True, **params):
         pass
 
@@ -53,6 +56,9 @@ class PostgresqlDialect(Dialect):
 
         table = validate_sql_identifier(table)
         return 'alter table %s %s' % (table, ', '.join(actions))
+
+    def construct_lock_table(self, tablename, mode):
+        return 'lock table %s in %s mode' % (tablename, mode)
 
     def create_database(self, url, name, conditional=True, owner=None):
         if conditional and self.is_database_present(url, name):

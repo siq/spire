@@ -80,6 +80,12 @@ class MeshClient(Unit):
             self.cache[name] = bind(self.instance.specification, name, mixin_modules)
             return self.cache[name]
 
+    def construct_url(self, path=None):
+        url = self.url
+        if path:
+            url = '%s/%s' % (url.rstrip('/'), path.lstrip('/'))
+        return url
+
     def execute(self, *args, **params):
         return self.instance.execute(*args, **params)
 

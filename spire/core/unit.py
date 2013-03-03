@@ -107,8 +107,8 @@ class UnitMeta(type):
         unit.__identity__ = identity
         unit.__token__ = token
 
-        log('debug', 'instantiating unit %s: token=%r, identity=%r',
-            cls.identity, token, identity)
+        #log('debug', 'instantiating unit %s: token=%r, identity=%r',
+        #    cls.identity, token, identity)
 
         if cls.configuration:
             configuration = cls.configuration.get(unit)

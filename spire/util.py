@@ -27,6 +27,8 @@ def dump_threads():
     return '\n'.join(lines)
 
 def enumerate_modules(package, import_modules=False):
+    """Enumerates all modules within ``package``, optionally importing each of them."""
+
     path = get_package_path(package)
     for filename in os.listdir(path):
         if filename[-3:] == '.py' and filename != '__init__.py':
@@ -50,6 +52,21 @@ def enumerate_tagged_methods(instance, tag, expected_value=None):
                 methods.append(value)
     else:
         return methods
+
+def find_tagged_method(instance, **attrs):
+    """Finds a tagged method of instance which as the specified attributes."""
+
+    for candidate in dir(instance):
+        method = getattr(instance, candidate)
+        if callable(method):
+            for attr, value in attrs.iteritems():
+                try:
+                    if getattr(method, attr) != value:
+                        break
+                except AttributeError:
+                    break
+            else:
+                return method
 
 def get_constructor_args(cls, ignore_private=True, _cache={}):
     """Identifies the named arguments of the constructor of ``cls``.
@@ -108,7 +125,21 @@ def get_package_path(module, path=None):
         fullpath = os.path.join(fullpath, path)
     return fullpath
 
+def get_url(url, **params):
+    if params:
+        params = urlencode(params)
+        segments = list(urlparse(url))
+        if segments[4]:
+            segments[4] += '&' + params
+        else:
+            segments[4] = params
+        url = urlunparse(segments)
+
+    return urlopen(url)
+
 def identify_object(obj, cache={}):
+    """Identifies ``obj`` if possible, returning a string."""
+
     if isinstance(obj, ModuleType):
         return obj.__name__
     elif isinstance(obj, object) and isinstance(obj, type):
@@ -131,6 +162,8 @@ def identify_object(obj, cache={}):
         raise TypeError(obj)
 
 def import_object(path):
+    """Attempts to import and return the object identified by ``path``."""
+
     attr = None
     if ':' in path:
         path, attr = path.split(':')
@@ -154,6 +187,9 @@ def is_module(obj):
 def is_package(obj):
     return (isinstance(obj, ModuleType) and obj.__name__ == obj.__package__)
 
+def nsuniqid(namespace, name):
+    return str(uuid5(namespace, str(name)))
+
 PLURALIZATION_RULES = (
     (re.compile(r'ife$'), re.compile(r'ife$'), 'ives'),
     (re.compile(r'eau$'), re.compile(r'eau$'), 'eaux'),
@@ -162,21 +198,6 @@ PLURALIZATION_RULES = (
     (re.compile(r'[^aeioudgkprt]h$'), re.compile(r'$'), 'es'),
     (re.compile(r'(qu|[^aeiou])y$'), re.compile(r'y$'), 'ies'),
 )
-
-def get_url(url, **params):
-    if params:
-        params = urlencode(params)
-        segments = list(urlparse(url))
-        if segments[4]:
-            segments[4] += '&' + params
-        else:
-            segments[4] = params
-        url = urlunparse(segments)
-
-    return urlopen(url)
-
-def nsuniqid(namespace, name):
-    return str(uuid5(namespace, str(name)))
 
 def pluralize(word, quantity=None, rules=PLURALIZATION_RULES):
     if quantity == 1: 
