@@ -95,6 +95,7 @@ class InitializeMigrations(MigrationTask):
 
     def run(self, runtime):
         root = self['path']
+        schema = self['schema']
         if root.exists():
             runtime.report('migrations directory exists for %r; aborting' % schema)
             return
