@@ -148,13 +148,16 @@ class PostgresqlDialect(Dialect):
         if isinstance(sql, list):
             sql = ' '.join(sql)
 
-        cursor = self._get_connection(url).cursor()
+        connection = self._get_connection(url)
+        cursor = connection.cursor()
+
         try:
             cursor.execute(sql)
             if result:
                 return cursor.next()
         finally:
             cursor.close()
+            connection.close()
 
     def _get_connection(self, url, autocommit=True):
         params = make_url(url).translate_connect_args(username='user')
