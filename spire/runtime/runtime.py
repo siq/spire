@@ -141,6 +141,8 @@ class Runtime(object):
             else:
                 return {'status': 'ready'}
         except Exception:
+            log('exception', 'execution of %s for startup of service %s at stage %s'
+                ' raised exception' % (method.__name__, service, stage))
             raise
 
     def _execute_startup_method(self, component, method, attempts, timeout):
