@@ -104,3 +104,4 @@ class ContextLocalManager(object):
             raise LocalError(token)
 
 ContextLocals = ContextLocalManager()
+purge_context_locals = ContextLocals.purge

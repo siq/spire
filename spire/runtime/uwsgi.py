@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import sys
 
+from spire.local import purge_context_locals
 from spire.runtime.runtime import Runtime
 from spire.util import dump_threads
 from spire.wsgi.util import Mount, MountDispatcher
@@ -103,6 +104,7 @@ class Runtime(Runtime):
         uwsgi.reload()
 
     def run_postforks(self):
+        purge_context_locals()
         for function in self.postforks:
             function()
 

@@ -177,9 +177,21 @@ class SchemaInterface(Unit):
         except NoSuchTableError:
             return False
 
-    def lock_table(self, session, tablename, mode='share row exclusive'):
-        clause = self.dialect.construct_lock_table(tablename, mode)
-        session.execute(clause)
+    def lock_tables(self, session, tables, mode='share row exclusive'):
+        if isinstance(tables, basestring):
+            tables = [tables]
+
+        for tablename in tables:
+            session.execute(self.dialect.construct_lock_table(tablename, mode))
+
+    def purge(self):
+        self.guard.acquire()
+        try:
+            for engine, sessions in self.cache.itervalues():
+                engine.dispose()
+            self.cache = {}
+        finally:
+            self.guard.release()
 
     def table_exists(self, table, **tokens):
         engine, sessions = self._acquire_engine(tokens)

@@ -197,11 +197,12 @@ class Runtime(object):
                 dispatcher.mount(ServiceEndpoint(self, service, path=path,
                     shared_path='/spire.service'))
 
-                body = {'id': service['id'], 'pid': self.pid, 'required': service['required'],
-                    'endpoint': 'http://%s%s' % (host, path)}
+                payload = {'type': 'registration', 'service': service['id'],
+                    'endpoint': 'http://%s%s' % (host, path), 'required': service['required']}
                 if 'dependencies' in service:
-                    body['dependencies'] = service['dependencies']
+                    payload['dependencies'] = service['dependencies']
 
+                body = {'pid': self.pid, 'request': payload}
                 connection.request('POST', body=body, mimetype='application/json',
                     serialize=True)
 
