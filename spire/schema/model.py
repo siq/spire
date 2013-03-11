@@ -122,7 +122,9 @@ class ModelBase(object):
         return object_session(self)
 
     def extract_dict(self, attrs=None, exclude=None, drop_none=False, **extraction):
-        if not attrs:
+        if isinstance(attrs, basestring):
+            attrs = attrs.split(' ')
+        elif not attrs:
             attrs = [column.name for column in self.__mapper__.columns]
         if isinstance(attrs, (tuple, list)):
             attrs = dict(zip(attrs, attrs))
