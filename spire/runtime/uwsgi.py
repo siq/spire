@@ -4,12 +4,12 @@ import os
 import sys
 
 from spire.local import purge_context_locals
-from spire.runtime.runtime import Runtime
+from spire.runtime.runtime import Runtime, current_runtime
 from spire.util import dump_threads
 from spire.wsgi.util import Mount, MountDispatcher
 
 IPYTHON_CONSOLE_TRIGGER = '/tmp/activate-%s-console'
-IPYTHON_CONSOLE_SIGNAL = 18
+IPYTHON_CONSOLE_SIGNAL = 8
 
 try:
     import uwsgi
@@ -34,14 +34,15 @@ class Mule(object):
     def send(self, message):
         uwsgi.mule_msg(message, self.id)
 
-    def wait(self):
-        return uwsgi.mule_get_msg()
+    def wait(self, signal=None):
+        current_runtime().wait(signal)
 
 class Runtime(Runtime):
     def __init__(self, configuration=None, assembly=None):
         super(Runtime, self).__init__(assembly=assembly)
         self.mules = {}
         self.postforks = []
+        self.signals = {}
 
         uwsgi.post_fork_hook = self.run_postforks
 
@@ -100,6 +101,13 @@ class Runtime(Runtime):
         mule = self.mules[name] = Mule(len(self.mules) + 1, name, function)
         self.postforks.append(mule)
 
+    def register_signal(self, name, target=None, function=None):
+        id = len(self.signals) + 10
+        self.signals[id], self.signals[name] = name, id
+
+        if target:
+            uwsgi.register_signal(id, target, function)
+
     def reload(self):
         uwsgi.reload()
 
@@ -108,8 +116,15 @@ class Runtime(Runtime):
         for function in self.postforks:
             function()
 
+    def signal(self, name):
+        uwsgi.signal(self.signals[name])
+
     def unlock(self):
         uwsgi.unlock()
+
+    def wait(self, signal=None):
+        if signal:
+            uwsgi.signal_wait(self.signals[signal])
 
 if uwsgi:
     uwsgi.applications = {'': Runtime()}
