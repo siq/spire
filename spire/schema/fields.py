@@ -85,6 +85,9 @@ class EnumerationType(TypeDecorator):
             self.enumeration = enumeration
 
     def validate(self, instance, column, value):
+        if not self.enumeration:
+            return
+
         if value in self.enumeration:
             return value
         else:
