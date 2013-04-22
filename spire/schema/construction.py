@@ -18,7 +18,8 @@ EQUIVALENTS = {
 class FieldConstructor(object):
     """A schema field constructor."""
 
-    def __init__(self, use_json_for_structure=False):
+    def __init__(self, use_json_for_map=False, use_json_for_structure=False):
+        self.use_json_for_map = use_json_for_map
         self.use_json_for_structure = use_json_for_structure
 
     def construct(self, field):
@@ -65,7 +66,10 @@ class FieldConstructor(object):
             minimum=field.minimum, maximum=field.maximum)
 
     def construct_map(self, field):
-        raise ValueError(field)
+        if self.use_json_for_map:
+            return Json(name=field.name, nullable=not field.required)
+        else:
+            raise ValueError(field)
 
     def construct_object(self, field):
         raise ValueError(field)
