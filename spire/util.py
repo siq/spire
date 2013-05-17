@@ -231,6 +231,12 @@ def recursive_merge(original, addition):
             original[key] = value
     return original
 
+def safe_table_name(value, prefix=None):
+    value = re.sub(r'[^a-z_]', '', value.lower()).strip('_')
+    if prefix:
+        value = prefix + '_' + value
+    return value
+
 VALID_CHARS_EXPR = re.compile(r'[^\w\s-]')
 SPACER_EXPR = re.compile(r'[-_\s]+')
 
