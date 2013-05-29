@@ -8,12 +8,13 @@ from sqlalchemy.types import TypeDecorator, UserDefinedType
 
 from spire.util import uniqid
 
-__all__ = ('Array', 'ArrayType', 'Boolean', 'BooleanType', 'Date', 'DateType',
-    'DateTime', 'DateTimeType', 'Decimal', 'DecimalType', 'Email', 'EmailType',
-    'Enumeration', 'EnumerationType', 'Float', 'FloatType', 'ForeignKey',
-    'Hstore', 'HstoreType', 'Identifier', 'Integer', 'IntegerType', 'Json',
-    'JsonType', 'Serialized', 'SerializedType', 'Text', 'TextType', 'Time',
-    'TimeType', 'Token', 'TokenType', 'UUID', 'UUIDType')
+__all__ = ('Array', 'ArrayType', 'BigInteger', 'BigIntegerType', 'Boolean',
+    'BooleanType', 'Date', 'DateType', 'DateTime', 'DateTimeType', 'Decimal',
+    'DecimalType', 'Email', 'EmailType', 'Enumeration', 'EnumerationType',
+    'Float', 'FloatType', 'ForeignKey', 'Hstore', 'HstoreType', 'Identifier',
+    'Integer', 'IntegerType', 'Json', 'JsonType', 'Serialized',
+    'SerializedType', 'Text', 'TextType', 'Time', 'TimeType', 'Token',
+    'TokenType', 'UUID', 'UUIDType')
 
 class TypeDecorator(TypeDecorator):
     def __repr__(self):
@@ -49,6 +50,14 @@ class ValidatesMinMax(object):
 
 ArrayType = ARRAY
 BooleanType = types.Boolean
+
+class BigIntegerType(TypeDecorator, ValidatesMinMax):
+    impl = types.BigInteger
+
+    def __init__(self, minimum=None, maximum=None):
+        super(BigIntegerType, self).__init__()
+        self.minimum = minimum
+        self.maximum = maximum
 
 class DateType(TypeDecorator, ValidatesMinMax):
     impl = types.Date
@@ -196,6 +205,9 @@ class UUIDType(TextType):
 
 def Array(item_type, as_tuple=False, **params):
     return Column(ArrayType(item_type, as_tuple=as_tuple), **params)
+
+def BigInteger(minimum=None, maximum=None, **params):
+    return Column(BigIntegerType(minimum, maximum), **params)
 
 def Boolean(nullable=False, **params):
     return Column(BooleanType(), nullable=nullable, **params)
