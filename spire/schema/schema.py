@@ -7,7 +7,7 @@ from scheme.supplemental import ObjectReference
 from sqlalchemy import MetaData, Table, create_engine, event
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import NoSuchTableError
-from sqlalchemy.orm.session import sessionmaker
+from sqlalchemy.orm.session import Session, sessionmaker
 
 from spire.core import *
 from spire.local import ContextLocals
@@ -18,6 +18,41 @@ from spire.util import get_package_path
 __all__ = ('OperationError', 'Schema', 'SchemaDependency', 'SchemaInterface', 'ValidationError')
 
 SessionLocals = ContextLocals.create_prefixed_proxy('schema.session')
+
+class EnhancedSession(Session):
+    def call_after_commit(self, function, *args, **params):
+        try:
+            calls = self._call_after_commit
+        except AttributeError:
+            self._call_after_commit = [(function, args, params)]
+        else:
+            calls.append((function, args, params))
+
+    def close(self):
+        super(EnhancedSession, self).close()
+        try:
+            del self._call_after_commit
+        except AttributeError:
+            pass
+
+    def commit(self):
+        super(EnhancedSession, self).commit()
+        try:
+            calls = self._call_after_commit
+        except AttributeError:
+            return
+        else:
+            del self._call_after_commit
+
+        for function, args, params in calls:
+            function(*args, **params)
+
+    def rollback(self):
+        super(EnhancedSession, self).rollback()
+        try:
+            del self._call_after_commit
+        except AttributeError:
+            pass
 
 class Schema(object):
     """A spire schema."""
@@ -152,6 +187,11 @@ class SchemaInterface(Unit):
         engine, sessions = self._acquire_engine(tokens)
         self.schema.metadata.drop_all(engine)
 
+    def enumerate_tables(self, **tokens):
+        engine, sessions = self._acquire_engine(tokens)
+        inspector = Inspector.from_engine(engine)
+        return inspector.get_table_names()
+
     def get_engine(self, **tokens):
         engine, sessions = self._acquire_engine(tokens)
         return engine
@@ -252,7 +292,7 @@ class SchemaInterface(Unit):
             echo = 'debug'
 
         engine = self.dialect.create_engine(url, self.schema, echo=echo)
-        return engine, sessionmaker(bind=engine)
+        return engine, sessionmaker(bind=engine, class_=EnhancedSession)
 
     def _get_migration_interface(self):
         migrations = self.configuration.get('migrations')
