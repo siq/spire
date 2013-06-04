@@ -6,7 +6,7 @@ from sqlalchemy.sql import asc, column, desc, func, literal_column, not_, select
 from spire.core import Unit
 from spire.schema import NoResultFound
 
-__all__ = ('ModelController', 'ProxyController', 'support_returning')
+__all__ = ('ModelController', 'ProxyController', 'UnitController', 'support_returning')
 
 EMPTY = []
 
@@ -481,3 +481,6 @@ class ProxyController(Unit, Controller):
 
     def _annotate_proxy_model(self, request, proxy_data, data):
         pass
+
+class UnitController(Unit, Controller):
+    """A generic unit controller."""

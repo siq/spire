@@ -232,7 +232,10 @@ def recursive_merge(original, addition):
     return original
 
 def safe_table_name(value, prefix=None):
-    value = re.sub(r'[^a-z_]', '', value.lower()).strip('_')
+    value = re.sub(r'[-:;.,]', '_', value.lower())
+    value = re.sub(r'[_]{2,}', '_', value.strip('_'))
+    value = re.sub(r'[^a-z_]', '', value)
+
     if prefix:
         value = prefix + '_' + value
     return value
