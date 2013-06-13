@@ -55,6 +55,7 @@ class Mount(Unit):
         except HTTPException, error:
             return error(environ, start_response)
         except Exception:
+            log('exception', 'exception raised during mount dispatch')
             return InternalServerError()(environ, start_response)
 
     def _dispatch_request(self, request, response):
