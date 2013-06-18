@@ -121,6 +121,13 @@ class ModelBase(object):
     def session(self):
         return object_session(self)
 
+    def clone(self, **attrs):
+        for column in self.__mapper__.columns:
+            if column.name not in attrs:
+                attrs[column.name] = getattr(self, column.name)
+        else:
+            return type(self)(**attrs)
+
     def extract_dict(self, attrs=None, exclude=None, drop_none=False, **extraction):
         if isinstance(attrs, basestring):
             attrs = attrs.split(' ')
