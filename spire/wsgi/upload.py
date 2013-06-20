@@ -1,5 +1,4 @@
 import os
-from glob import glob
 
 from scheme import Json, Text
 from werkzeug.exceptions import MethodNotAllowed
@@ -15,22 +14,17 @@ class UploadEndpoint(Mount):
     })
 
     def _dispatch_request(self, request, response):
-        target = self.configuration['target_directory']
+        directory = self.configuration['upload_directory']
         if request.method != 'POST':
             raise MethodNotAllowed()
 
         mapping = {}
         for name, uploaded_file in request.files.iteritems():
-            id = mapping[name] = uniqid()
-            uploaded_file.save(self._construct_filename(uploaded_file, id))
+            filename = mapping[name] = '%s_%s' % (uniqid(), uploaded_file.filename)
+            uploaded_file.save(os.path.join(directory, filename))
 
         response.mimetype = 'application/json'
         response.data = Json.serialize(mapping)
-
-    def _construct_filename(self, uploaded_file, id):
-        target = self.configuration['upload_directory']
-        root, ext = os.path.splitext(uploaded_file.filename)
-        return os.path.join(target, '%s%s' % (id, ext))
 
 class UploadManager(Unit):
     configuration = Configuration({
@@ -38,22 +32,19 @@ class UploadManager(Unit):
     })
 
     def acquire(self, id):
-        filename = self._find_uploaded_file(id)
-        return open(filename)
+        return open(self.find(id))
 
     def dispose(self, id):
         try:
-            filename = self._find_uploaded_file(id)
+            filename = self.find(id)
         except ValueError:
             pass
         else:
             os.unlink(filename)
 
-    def _find_uploaded_file(self, id):
-        directory = self.configuration['upload_directory']
-        paths = glob(os.path.join(directory, id + '.*'))
-
-        if len(paths) == 1:
-            return paths[0]
+    def find(self, id):
+        filename = os.path.join(self.configuration['upload_directory'], id)
+        if os.path.exists(filename):
+            return filename
         else:
             raise ValueError(id)
