@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import sys
@@ -136,6 +137,16 @@ def get_url(url, **params):
         url = urlunparse(segments)
 
     return urlopen(url)
+
+def hash_file(filename, hash='md5', window=10485760):
+    hash = getattr(hashlib, hash)()
+    with open(filename, 'r') as openfile:
+        while True:
+            chunk = openfile.read(window)
+            if chunk:
+                hash.update(chunk)
+            else:
+                return hash.hexdigest()
 
 def identify_object(obj, cache={}):
     """Identifies ``obj`` if possible, returning a string."""
