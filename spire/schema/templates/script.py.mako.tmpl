@@ -10,7 +10,8 @@ down_revision = ${repr(down_revision)}
 
 from alembic import op
 from spire.schema.fields import *
-from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, PrimaryKeyConstraint, CheckConstraint
+from sqlalchemy import (Column, ForeignKey, ForeignKeyConstraint, PrimaryKeyConstraint,
+    CheckConstraint, UniqueConstraint)
 from sqlalchemy.dialects import postgresql
 
 def upgrade():
