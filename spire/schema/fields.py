@@ -230,11 +230,14 @@ def Enumeration(enumeration, **params):
 def Float(minimum=None, maximum=None, **params):
     return Column(FloatType(minimum, maximum), **params)
 
-def ForeignKey(column, **params):
+def ForeignKey(column, constraint_name=None, **params):
     column_params = {}
     for name in ('name', 'type_', 'default', 'doc', 'index', 'info', 'nullable', 'unique', 'primary_key'):
         if name in params:
             column_params[name] = params.pop(name)
+
+    if constraint_name:
+        params['name'] = constraint_name
 
     return Column(_ForeignKey(column, **params), **column_params)
 
