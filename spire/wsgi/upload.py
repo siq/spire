@@ -15,7 +15,9 @@ class UploadEndpoint(Mount):
 
     def _dispatch_request(self, request, response):
         directory = self.configuration['upload_directory']
-        if request.method != 'POST':
+        if request.method == 'GET':
+            return
+        elif request.method != 'POST':
             raise MethodNotAllowed()
 
         mapping = {}
