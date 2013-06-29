@@ -1,4 +1,4 @@
-from spire.mesh.units import Definition, DefinitionType
+from spire.mesh.units import Definition, DefinitionType, Surrogate, SurrogateType
 from spire.schema.fields import *
 
 EQUIVALENTS = {
@@ -11,6 +11,7 @@ EQUIVALENTS = {
     'enumeration': EnumerationType,
     'float': FloatType,
     'integer': IntegerType,
+    'surrogate': SurrogateType,
     'text': TextType,
     'time': TimeType,
 }
@@ -87,6 +88,9 @@ class FieldConstructor(object):
             return Json(name=field.name, nullable=not field.required)
         else:
             raise ValueError(field)
+
+    def construct_surrogate(self, field):
+        return Surrogate(name=field.name, nullable=not field.required)
 
     def construct_text(self, field):
         return Text(name=field.name, nullable=not field.required,

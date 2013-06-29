@@ -5,6 +5,7 @@ from mesh.binding.python import bind
 from mesh.transport.http import HttpClient, HttpProxy, HttpServer
 from scheme import *
 from scheme.supplemental import ObjectReference
+from scheme.surrogate import surrogate
 
 from spire.core import *
 from spire.context import ContextMiddleware, HeaderParser
@@ -14,7 +15,7 @@ from spire.wsgi.application import Request
 from spire.wsgi.util import Mount
 
 __all__ = ('Definition', 'DefinitionType', 'ExplicitContextManager', 'MeshClient',
-    'MeshProxy', 'MeshDependency', 'MeshServer')
+    'MeshProxy', 'MeshDependency', 'MeshServer', 'Surrogate', 'SurrogateType')
 
 CONTEXT_HEADER_PREFIX = 'X-SPIRE-'
 ContextLocal = ContextLocals.declare('mesh.context')
@@ -32,6 +33,20 @@ class DefinitionType(TypeDecorator):
 
 def Definition(**params):
     return Column(DefinitionType(), **params)
+
+class SurrogateType(TypeDecorator):
+    impl = types.Text
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return json.dumps(value.serialize(), sort_keys=True)
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            return surrogate.unserialize(json.loads(value))
+
+def Surrogate(**params):
+    return Column(SurrogateType(), **params)
 
 def get_mesh_context():
     context = ContextLocal.get()
