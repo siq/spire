@@ -28,6 +28,10 @@ class Request(WsgiRequest):
             if name[:8] == 'request.':
                 setattr(self, name[8:], value)
 
+    @property
+    def forwarded_ip(self):
+        return self.headers.get('X-Forwarded-For')
+
     def bind(self):
         ContextLocal.push(self)
 
