@@ -40,9 +40,6 @@ class Runtime(object):
 
     def __new__(cls, *args, **params):
         with Runtime.guard:
-            if Runtime.runtime:
-                raise Exception('runtime already instantiated')
-
             Runtime.runtime = super(Runtime, cls).__new__(cls, *args, **params)
             return Runtime.runtime
 

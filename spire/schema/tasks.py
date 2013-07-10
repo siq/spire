@@ -56,7 +56,7 @@ class DeploySchema(SpireTask):
             runtime.report('dropping schema %r' % name)
             interface.drop_schema()
 
-        runtime.report('deploying schema %r' % name)
+        runtime.report('deploying schema %r to %r' % (name, interface.url))
         interface.deploy_schema()
 
 class MigrationTask(SpireTask):
