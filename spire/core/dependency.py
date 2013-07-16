@@ -84,8 +84,10 @@ class Dependency(object):
     def get(self, instance=None):
         try:
             return self.cache[instance]
+        except AttributeError:
+            hashable = False
         except KeyError:
-            pass
+            hashable = True
 
         identity = None
         token = None
@@ -107,8 +109,11 @@ class Dependency(object):
                 token = identity
 
         key = (token, identity, self.unit)
-        self.cache[instance] = assembly.acquire(key, self.instantiate, (assembly, token, identity, instance))
-        return self.cache[instance]
+        dependency = assembly.acquire(key, self.instantiate, (assembly, token, identity, instance))
+
+        if hashable:
+            self.cache[instance] = dependency
+        return dependency
 
     def instantiate(self, assembly, token, identity, parent):
         params = self.contribute_params()

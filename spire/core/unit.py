@@ -127,7 +127,6 @@ class UnitMeta(type):
                 dependency.get(unit)
 
         unit.__init__(**params)
-
         return unit
 
 class Unit(object):

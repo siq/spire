@@ -38,7 +38,7 @@ class Configuration(object):
 
         token = instance.__token__
         try:
-            configuration = instance.__assembly__.configuration[token]
+            configuration = instance.__assembly__.get_configuration(token)
         except KeyError:
             configuration = self.schema.generate_default()
 

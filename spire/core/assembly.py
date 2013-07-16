@@ -22,6 +22,7 @@ class Assembly(object):
         self.cache = {}
         self.configuration = {}
         self.guard = RLock()
+        self.pending = {}
         self.principals = {}
 
     def __enter__(self):
@@ -67,11 +68,14 @@ class Assembly(object):
         return cls.local.assembly or cls.standard
 
     def configure(self, configuration):
+        schemas = Registry.schemas
         for token, data in configuration.iteritems():
-            schema = Registry.schemas.get(token)
+            schema = schemas.get(token)
             if schema:
                 data = schema.process(data, serialized=True)
                 recursive_merge(self.configuration, {token: data})
+            else:
+                recursive_merge(self.pending, {token: data})
 
     def demote(self):
         if self.local.assembly is self:
@@ -87,6 +91,25 @@ class Assembly(object):
             if token.startswith(prefix):
                 filtered[token] = data
         return filtered
+
+    def get_configuration(self, token):
+        try:
+            return self.configuration[token]
+        except KeyError:
+            pass
+
+        self.guard.acquire()
+        try:
+            schemas = Registry.schemas
+            for token in self.pending.keys():
+                schema = schemas.get(token)
+                if schema:
+                    data = schema.process(self.pending.pop(token), serialized=True)
+                    recursive_merge(self.configuration, {token: data})
+        finally:
+            self.guard.release()
+
+        return self.configuration[token]
 
     def instantiate(self, unit):
         if isinstance(unit, basestring):

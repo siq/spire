@@ -77,7 +77,7 @@ class Runtime(object):
 
         return self
 
-    def deploy(self):
+    def deploy(self, ignore_components=False):
         configuration = self.configuration
         if 'logging' in configuration:
             configure_logging(configuration['logging'])
@@ -86,15 +86,16 @@ class Runtime(object):
         self.parameters = PARAMETERS_SCHEMA.process(parameters)
 
         components = configuration.get('components')
-        if components:
+        if components and not ignore_components:
             components = COMPONENTS_SCHEMA.process(components, serialized=True)
 
         config = configuration.get('configuration')
         if config:
             self.assembly.configure(config)
 
-        for component in components:
-            self.components[component.identity] = self.assembly.instantiate(component)
+        if components and not ignore_components:
+            for component in components:
+                self.components[component.identity] = self.assembly.instantiate(component)
 
         return self
 
