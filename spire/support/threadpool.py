@@ -105,6 +105,7 @@ class ThreadPool(Unit):
                 self.idle.pop().assign(package)
             elif self.spare:
                 self.spare.assign(package)
+                self.spare = None
             elif len(self.threads) < self.maximum_threads:
                 self._grow_pool().assign(package)
             else:
@@ -138,8 +139,8 @@ class ThreadPool(Unit):
             if self.pending:
                 thread.assign(self.pending.popleft())
             else:
-                self.idle.append(thread)
                 self._idle_thread()
+                self.idle.append(thread)
         elif activity == 'shrink':
             excess = len(self.threads) - self.maximum_threads
             if excess >= 1:
