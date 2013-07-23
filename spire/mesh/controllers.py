@@ -3,7 +3,7 @@ from mesh.exceptions import GoneError, NotFoundError
 from mesh.standard import Controller
 from sqlalchemy.sql import asc, column, desc, func, literal_column, not_, select
 
-from spire.core import Unit
+from spire.core import Configurable, Unit
 from spire.schema import NoResultFound
 
 __all__ = ('ModelController', 'ProxyController', 'UnitController', 'support_returning')
@@ -482,5 +482,5 @@ class ProxyController(Unit, Controller):
     def _annotate_proxy_model(self, request, proxy_data, data):
         pass
 
-class UnitController(Unit, Controller):
+class UnitController(Unit, Controller, Configurable):
     """A generic unit controller."""

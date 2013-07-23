@@ -1,5 +1,5 @@
 from scheme import Boolean, Sequence, Text
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, NotFound
 from werkzeug.wrappers import Request, Response
 
 from spire.core import Configuration, Unit
@@ -112,3 +112,8 @@ class MountDispatcher(object):
             self.mounts[path] = mount
         else:
             log('warning', 'mount %r declares duplicate path %r', mount, path)
+
+def redirect_response(response, url, status=302):
+    response.status_code = status
+    response.headers.add('Location', url)
+    return response

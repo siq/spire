@@ -101,14 +101,15 @@ class Assembly(object):
         self.guard.acquire()
         try:
             schemas = Registry.schemas
-            for token in self.pending.keys():
-                schema = schemas.get(token)
+            for candidate in self.pending.keys():
+                schema = schemas.get(candidate)
                 if schema:
-                    data = schema.process(self.pending.pop(token), serialized=True)
-                    recursive_merge(self.configuration, {token: data})
+                    data = schema.process(self.pending.pop(candidate), serialized=True)
+                    recursive_merge(self.configuration, {candidate: data})
         finally:
             self.guard.release()
 
+        print self.configuration[token]
         return self.configuration[token]
 
     def instantiate(self, unit):
