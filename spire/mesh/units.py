@@ -110,6 +110,9 @@ class MeshClient(Unit):
     def ping(self):
         return self.instance.ping()
 
+    def _provide_binding(self):
+        return self.instance.specification
+
 class MeshProxy(Mount):
     configuration = Configuration({
         'timeout': Integer(default=120),
