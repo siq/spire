@@ -25,7 +25,7 @@ class UploadEndpoint(Mount):
             filename = mapping[name] = '%s_%s' % (uniqid(), uploaded_file.filename)
             uploaded_file.save(os.path.join(directory, filename))
 
-        response.mimetype = 'application/json'
+        response.mimetype = 'text/html'
         response.data = Json.serialize(mapping)
 
 class UploadManager(Unit):
