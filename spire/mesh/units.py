@@ -115,7 +115,7 @@ class MeshClient(Unit):
 
 class MeshProxy(Mount):
     configuration = Configuration({
-        'timeout': Integer(default=120),
+        'timeout': Integer(default=240),
         'url': Text(nonempty=True),
     })
 
