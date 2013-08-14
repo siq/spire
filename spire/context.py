@@ -40,4 +40,5 @@ class SessionParser(object):
         if session:
             value = session.get(self.key)
             if value:
+                context['session-id'] = session.sid
                 context.update(value)
