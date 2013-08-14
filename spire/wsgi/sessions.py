@@ -47,7 +47,10 @@ class SessionMiddleware(Unit, Middleware):
 
     enabled = configured_property('enabled')
 
-    def __init__(self, store):
+    def __init__(self, store, prefix='HTTP_X_SPIRE_'):
+        self.prefix = prefix
+        self.prefix_length = len(prefix)
+
         self.store = store['implementation'](session_class=Session,
             **pruned(store, 'implementation'))
 
@@ -83,10 +86,24 @@ class SessionMiddleware(Unit, Middleware):
     def _get_session(self, environ):
         cookie = parse_cookie(environ.get('HTTP_COOKIE', ''))
         id = cookie.get(self.configuration['cookie']['name'], None)
-        if id is not None:
+
+        if id is None:
+            id = self._find_session_id(environ)
+
+        if id:
             return self.store.get(id)
         else:
             return self.store.new()
+
+    def _find_session_id(self, environ):
+        prefix = self.prefix
+        length = self.prefix_length
+
+        for name, value in environ.iteritems():
+            if name[:length] == prefix:
+                key = name[length:].lower().replace('_', '-')
+                if key == 'session-id':
+                    return value
 
 def get_session(environ):
     return environ.get('request.session')
