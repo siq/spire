@@ -247,8 +247,9 @@ def Hstore(**params):
 def Identifier(**params):
     return Column(UUIDType(), nullable=False, primary_key=True, default=uniqid, **params)
 
-def Integer(minimum=None, maximum=None, **params):
-    return Column(IntegerType(minimum, maximum), **params)
+def Integer(minimum=None, maximum=None, sequence=None, **params):
+    arguments = ([sequence] if sequence else [])
+    return Column(IntegerType(minimum, maximum), *arguments, **params)
 
 def Json(**params):
     return Column(JsonType(), **params)
