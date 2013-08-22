@@ -1,3 +1,5 @@
+import re
+
 from mesh.constants import OK, RETURNING
 from mesh.exceptions import GoneError, NotFoundError
 from mesh.standard import Controller
@@ -29,6 +31,8 @@ class FieldFilter(object):
         return (field in self.fields)
 
 class FilterOperators(object):
+    WILDCARD_EXPR = re.compile(r'([%_])')
+
     def equal_op(self, query, column, value):
         return query.filter(column == value)
 
@@ -42,21 +46,27 @@ class FilterOperators(object):
         return query.filter(func.lower(column) != value)
 
     def prefix_op(self, query, column, value):
+        value = self.WILDCARD_EXPR.sub(r'\\\1', value)
         return query.filter(column.like(value + '%'))
 
     def iprefix_op(self, query, column, value):
+        value = self.WILDCARD_EXPR.sub(r'\\\1', value)
         return query.filter(column.ilike(value + '%'))
 
     def suffix_op(self, query, column, value):
+        value = self.WILDCARD_EXPR.sub(r'\\\1', value)
         return query.filter(column.like('%' + value))
 
     def isuffix_op(self, query, column, value):
+        value = self.WILDCARD_EXPR.sub(r'\\\1', value)
         return query.filter(column.ilike('%' + value))
 
     def contains_op(self, query, column, value):
+        value = self.WILDCARD_EXPR.sub(r'\\\1', value)
         return query.filter(column.like('%' + value + '%'))
 
     def icontains_op(self, query, column, value):
+        value = self.WILDCARD_EXPR.sub(r'\\\1', value)
         return query.filter(column.ilike('%' + value + '%'))
 
     def gt_op(self, query, column, value):
