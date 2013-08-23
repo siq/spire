@@ -4,11 +4,11 @@ from scheme import Boolean, Integer, Object, Structure, Text
 from werkzeug.contrib.sessions import FilesystemSessionStore, SessionStore, Session, generate_key
 from werkzeug.http import dump_cookie, parse_cookie
 from werkzeug.wsgi import ClosingIterator
-
+import pickle
 from spire.core import Configuration, Unit, configured_property
 from spire.util import pruned
 from spire.wsgi.util import Middleware
-
+import os
 LONG_AGO = datetime(2000, 1, 1)
 
 class Session(Session):
@@ -42,6 +42,20 @@ class SessionBackend(Unit):
         store = self.configuration['store']
         self.store = store['implementation'](session_class=Session,
             **pruned(store, 'implementation'))
+
+    def remove_filesession_by_user_id(self, subject_id):
+        fs = self.store
+        list_session = fs.list()
+        filename = None
+        for sid in list_session:
+            filename = fs.get_session_filename(sid)
+            session_filedict = pickle.load(open(filename, 'rb'))
+            context = session_filedict.get('request.context', None)
+            if context:
+                user_id = context.get('user-id', None)
+                if user_id and user_id == subject_id:
+                    os.remove(filename)
+        return
 
 class SessionMiddleware(Unit, Middleware):
     """A session middleware."""
