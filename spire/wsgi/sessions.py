@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from scheme import Boolean, Integer, Structure, Text
-from scheme.supplemental import ObjectReference
+from scheme import Boolean, Integer, Object, Structure, Text
 from werkzeug.contrib.sessions import FilesystemSessionStore, SessionStore, Session, generate_key
 from werkzeug.http import dump_cookie, parse_cookie
 from werkzeug.wsgi import ClosingIterator
@@ -23,6 +22,27 @@ class Session(Session):
     def rekey(self):
         self.sid = generate_key()
 
+class SessionBackend(Unit):
+    """A session backend."""
+
+    configuration = Configuration({
+        'store': Structure(
+            structure={
+                FilesystemSessionStore: {
+                    'path': Text(default=None),
+                },
+            },
+            polymorphic_on=Object(name='implementation', nonnull=True),
+            default={'implementation': FilesystemSessionStore},
+            required=True,
+        )
+    })
+
+    def __init__(self):
+        store = self.configuration['store']
+        self.store = store['implementation'](session_class=Session,
+            **pruned(store, 'implementation'))
+
 class SessionMiddleware(Unit, Middleware):
     """A session middleware."""
 
@@ -39,7 +59,7 @@ class SessionMiddleware(Unit, Middleware):
                     'path': Text(default=None),
                 },
             },
-            polymorphic_on=ObjectReference(name='implementation', nonnull=True),
+            polymorphic_on=Object(name='implementation', nonnull=True),
             default={'implementation': FilesystemSessionStore},
             required=True,
         )
@@ -47,10 +67,11 @@ class SessionMiddleware(Unit, Middleware):
 
     enabled = configured_property('enabled')
 
-    def __init__(self, store, prefix='HTTP_X_SPIRE_'):
+    def __init__(self, prefix='HTTP_X_SPIRE_'):
         self.prefix = prefix
         self.prefix_length = len(prefix)
 
+        store = self.configuration['store']
         self.store = store['implementation'](session_class=Session,
             **pruned(store, 'implementation'))
 
