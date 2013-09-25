@@ -4,6 +4,8 @@ from sqlalchemy import Column, create_engine, event
 from sqlalchemy.dialects.postgresql.base import ARRAY
 from sqlalchemy.engine.url import make_url
 
+from spire.schema.fields import BigIntegerType
+
 class Dialect(object):
     def __init__(self, dialect, hstore=False):
         self.dialect = dialect
@@ -131,6 +133,10 @@ class PostgresqlDialect(Dialect):
 
     def type_is_equivalent(self, left, right):
         if left._type_affinity is not right._type_affinity:
+            return False
+        if isinstance(left, BigIntegerType) and not isinstance(right, BigIntegerType):
+            return False
+        if isinstance(right, BigIntegerType) and not isinstance(left, BigIntegerType):
             return False
         if (left._type_affinity is ARRAY and left.item_type._type_affinity is not
                 right.item_type._type_affinity):
