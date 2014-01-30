@@ -61,19 +61,33 @@ class Runtime(object):
     def pid(self):
         raise NotImplementedError()
 
-    def configure(self, configuration):
+    def configure(self, configuration, namespace=None):
         if isinstance(configuration, basestring):
             configuration = Format.read(configuration, quiet=True)
             if not configuration:
                 return
 
+        if namespace:
+            try:
+                configuration = configuration['namespace'][namespace]
+            except KeyError:
+                return
+            else:
+                if not configuration:
+                    return
+
         includes = configuration.pop('include', None)
         recursive_merge(self.configuration, configuration)
 
         if includes:
-            for pattern in includes:
-                for include in sorted(glob(pattern)):
-                    self.configure(include)
+            for item in includes:
+                if isinstance(item, dict):
+                    for namespace, pattern in item.iteritems():
+                        for include in sorted(glob(pattern)):
+                            self.configure(include, namespace=namespace)
+                else:
+                    for include in sorted(glob(item)):
+                        self.configure(include)
 
         return self
 
