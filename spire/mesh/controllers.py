@@ -186,25 +186,17 @@ class ModelController(Unit, Controller):
             from_obj="(values %s) as subset(rank, id)" % ', '.join(identifiers))
 
         query = (self.schema.session.query(self.model)
-            .join(expr.cte('__subset__'), literal_column('__subset__.id')==self.model.id)
-            .order_by(literal_column('__subset__.rank')))
+          .join(expr.cte('__subset__'), literal_column('__subset__.id')==self.model.id)
+          .order_by(literal_column('__subset__.rank')))
+        query = self._annotate_load(request, query, data)
 
         resources = []
         instances = list(query.all())
 
-        instance = (instances.pop(0) if instances else None)
-        for id in candidates:
-            if instance:
+        for instance in instances:
+            for id in candidates:
                 if instance.id == id:
                     resources.append(self._construct_resource(request, instance, data))
-                    if instances:
-                        instance = instances.pop(0)
-                    else:
-                        instance = None
-                else:
-                    resources.append(None)
-            else:
-                resources.append(None)
 
         response(resources)
 
@@ -261,6 +253,9 @@ class ModelController(Unit, Controller):
         pass
 
     def _annotate_query(self, request, query, data):
+        return query
+
+    def _annotate_load(self, request, query, data):
         return query
 
     def _construct_filters(self, query, filters):
