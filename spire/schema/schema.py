@@ -24,9 +24,9 @@ class EnhancedSession(Session):
         try:
             calls = self._call_after_commit
         except AttributeError:
-            self._call_after_commit = [(function, args, params)]
+            self._call_after_commit = [[(function, args, params)]]
         else:
-            calls.append((function, args, params))
+            calls[-1].append((function, args, params))
 
     def close(self):
         super(EnhancedSession, self).close()
@@ -35,22 +35,29 @@ class EnhancedSession(Session):
         except AttributeError:
             pass
 
+    def begin_nested(self):
+        try:
+            calls = self._call_after_commit
+        except AttributeError:
+            calls = self._call_after_commit = [[], []]
+        else:
+            calls.append([])
+        return super(EnhancedSession, self).begin_nested()
+
     def commit(self):
         super(EnhancedSession, self).commit()
         try:
             calls = self._call_after_commit
         except AttributeError:
             return
-        else:
-            del self._call_after_commit
 
-        for function, args, params in calls:
+        for function, args, params in calls.pop():
             function(*args, **params)
 
     def rollback(self):
         super(EnhancedSession, self).rollback()
         try:
-            del self._call_after_commit
+            self._call_after_commit.pop()
         except AttributeError:
             pass
 
