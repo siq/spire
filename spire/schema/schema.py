@@ -22,11 +22,11 @@ SessionLocals = ContextLocals.create_prefixed_proxy('schema.session')
 class EnhancedSession(Session):
     def call_after_commit(self, function, *args, **params):
         try:
-            calls = self._call_after_commit
-        except AttributeError:
+            nested_calls = self._call_after_commit[-1]
+        except (AttributeError, IndexError):
             self._call_after_commit = [[(function, args, params)]]
         else:
-            calls[-1].append((function, args, params))
+            nested_calls.append((function, args, params))
 
     def close(self):
         super(EnhancedSession, self).close()
@@ -47,18 +47,18 @@ class EnhancedSession(Session):
     def commit(self):
         super(EnhancedSession, self).commit()
         try:
-            calls = self._call_after_commit
-        except AttributeError:
+            nested_calls = self._call_after_commit.pop()
+        except (AttributeError, IndexError):
             return
 
-        for function, args, params in calls.pop():
+        for function, args, params in nested_calls:
             function(*args, **params)
 
     def rollback(self):
         super(EnhancedSession, self).rollback()
         try:
             self._call_after_commit.pop()
-        except AttributeError:
+        except (AttributeError, IndexError):
             pass
 
 class Schema(object):
