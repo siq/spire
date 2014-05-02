@@ -3,6 +3,7 @@ import os
 from scheme import Json, Text
 from werkzeug.exceptions import MethodNotAllowed
 from werkzeug.formparser import parse_form_data
+from werkzeug.utils import secure_filename
 
 from spire.core import Configuration, Unit
 from spire.util import uniqid
@@ -22,7 +23,8 @@ class UploadEndpoint(Mount):
 
         mapping = {}
         for name, uploaded_file in request.files.iteritems():
-            filename = mapping[name] = '%s_%s' % (uniqid(), uploaded_file.filename)
+            filename = mapping[name] = '%s_%s' % (
+                uniqid(), secure_filename(uploaded_file.filename))
             uploaded_file.save(os.path.join(directory, filename))
 
         response.mimetype = 'text/html'
