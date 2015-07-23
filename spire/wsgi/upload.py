@@ -29,7 +29,6 @@ class UploadEndpoint(Mount):
 
         mapping = {}
         for name, uploaded_file in request.files.iteritems():
-            # validate json files
             if (hasattr(uploaded_file, 'content_type') and
                 uploaded_file.content_type == 'application/json'):
                 self._validate_json(uploaded_file)
