@@ -3,7 +3,7 @@ import os
 from werkzeug.exceptions import MethodNotAllowed
 from spire.wsgi.util import Mount
 
-class CsvDownloadEndPoint(Mount):
+class ClientDownloadEndPoint(Mount):
 
     def _dispatch_request(self, request, response):
         if request.method == 'GET':
@@ -11,6 +11,8 @@ class CsvDownloadEndPoint(Mount):
         elif request.method != 'POST':
             raise MethodNotAllowed()
 
+        # default is csv
+        # but you can specify any mimetype and filename you want from within the form being submitted
         mimetype = request.form.get('mimetype', 'text/csv')
         filename = request.form.get('filename', 'data.csv')
         data = request.form.get('data', '')
