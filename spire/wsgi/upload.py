@@ -1,7 +1,7 @@
 import os, json
 
 from scheme import Json, Text
-from werkzeug.exceptions import MethodNotAllowed, NotAcceptable, HTTPException
+from werkzeug.exceptions import MethodNotAllowed
 from werkzeug.formparser import parse_form_data
 from werkzeug.utils import secure_filename
 
@@ -14,12 +14,6 @@ class UploadEndpoint(Mount):
         'upload_directory': Text(nonempty=True, default='/tmp'),
     })
 
-    def _validate_json(self, uploaded_file):
-        try:
-            json.load(uploaded_file.stream)
-        except ValueError:
-            raise NotAcceptable('attempt to upload an invalid JSON file')
-
     def _dispatch_request(self, request, response):
         directory = self.configuration['upload_directory']
         if request.method == 'GET':
@@ -29,10 +23,6 @@ class UploadEndpoint(Mount):
 
         mapping = {}
         for name, uploaded_file in request.files.iteritems():
-            if (hasattr(uploaded_file, 'content_type') and
-                uploaded_file.content_type == 'application/json'):
-                self._validate_json(uploaded_file)
-
             filename = mapping[name] = '%s_%s' % (
                 uniqid(), secure_filename(uploaded_file.filename))
             uploaded_file.save(os.path.join(directory, filename))
