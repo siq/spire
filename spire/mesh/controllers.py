@@ -171,7 +171,9 @@ class ModelController(Unit, Controller):
         response({'id': self._get_id_value(subject)})
 
     def get(self, request, response, subject, data):
-        response(self._construct_resource(request, subject, data))
+        resource = self._construct_resource(request, subject, data)
+        self._annotate_resources(request, [resource], data)
+        response(resource)
 
     def load(self, request, response, subject, data):
         candidates = data['identifiers']
@@ -205,6 +207,8 @@ class ModelController(Unit, Controller):
                     resources.append(None)
             else:
                 resources.append(None)
+
+        self._annotate_resources(request, resources, data)
 
         response(resources)
 
@@ -240,6 +244,8 @@ class ModelController(Unit, Controller):
         for instance in query.all():
             resources.append(self._construct_resource(request, instance, data))
 
+        self._annotate_resources(request, resources, data)
+
         response({'total': total, 'resources': resources})
 
     def update(self, request, response, subject, data):
@@ -257,11 +263,14 @@ class ModelController(Unit, Controller):
     def _annotate_model(self, request, model, data):
         pass
 
+    def _annotate_query(self, request, query, data):
+        return query
+
     def _annotate_resource(self, request, model, resource, data):
         pass
 
-    def _annotate_query(self, request, query, data):
-        return query
+    def _annotate_resources(self, request, resources, data):
+        pass
 
     def _construct_filters(self, query, filters):
         model = self.model
