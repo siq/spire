@@ -187,8 +187,12 @@ class ModelController(Unit, Controller):
         expr = select([column('rank'), column('id')],
             from_obj="(values %s) as subset(rank, id)" % ', '.join(identifiers))
 
-        query = (self.schema.session.query(self.model)
-            .join(expr.cte('__subset__'), literal_column('__subset__.id')==self.model.id)
+        query = self._annotate_query(
+            request, self.schema.session.query(self.model), data)
+
+        query = (query
+            .join(expr.cte('__subset__'),
+                  literal_column('__subset__.id')==self.model.id)
             .order_by(literal_column('__subset__.rank')))
 
         resources = []
