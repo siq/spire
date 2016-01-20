@@ -107,8 +107,10 @@ class SessionMiddleware(Unit, Middleware):
                 headers.append(('Set-Cookie', self._construct_cookie(session)))
             return start_response(status, headers, exc_info)
 
-        return ClosingIterator(application(environ, injecting_start_response),
-            lambda: self.store.save_if_modified(session))
+        try:
+            return application(environ, injecting_start_response)
+        finally:
+            self.store.save_if_modified(session)
 
     def _construct_cookie(self, session, unset=False):
         params = self.configuration['cookie']
