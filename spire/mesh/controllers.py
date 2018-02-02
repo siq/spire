@@ -6,7 +6,10 @@ from mesh.standard import Controller
 from sqlalchemy.sql import asc, column, desc, func, literal_column, not_, select
 
 from spire.core import Configurable, Unit
-from spire.schema import NoResultFound
+from spire.schema import NoResultFound, SchemaDependency
+
+from bastion.security.models import SubjectRole, Role
+
 
 __all__ = ('ModelController', 'ProxyController', 'UnitController', 'support_returning')
 
@@ -116,6 +119,7 @@ class ModelController(Unit, Controller):
     polymorphic_mapping = None
     polymorphic_on = None
     operators = FilterOperators()
+    security_schema = SchemaDependency('bastion_security')
 
     @classmethod
     def __construct__(cls):
@@ -382,6 +386,14 @@ class ModelController(Unit, Controller):
             return self.polymorphic_mapping[identity]
         else:
             return self.mapping
+    
+    def _current_user_has_role(self, request, check_role):
+        
+        current_user_id = request.context.get('user-id')
+        
+        roles = self.security_schema.query(Role).join(SubjectRole).filter(SubjectRole.subject_id == current_user_id, Role.status == 'active').all()
+        current_user_roles = [role.token for role in roles]    
+        return check_role in current_user_roles
 
 def support_returning(method):
     def wrapper(self, request, response, subject, data):
@@ -394,6 +406,7 @@ class ProxyController(Unit, Controller):
     """A mesh controller for mesh proxy models."""
     proxy_model = None
     mapping = None
+    security_schema = SchemaDependency('bastion_security')
 
     @classmethod
     def __construct__(cls):
@@ -504,6 +517,15 @@ class ProxyController(Unit, Controller):
 
     def _annotate_proxy_model(self, request, proxy_data, data):
         pass
+    
+    def _current_user_has_role(self, request, check_role):
+        
+        current_user_id = request.context.get('user-id')
+        
+        roles = self.security_schema.query(Role).join(SubjectRole).filter(SubjectRole.subject_id == current_user_id, Role.status == 'active').all()
+        current_user_roles = [role.token for role in roles]    
+        return check_role in current_user_roles
+
 
 class UnitController(Unit, Controller, Configurable):
     """A generic unit controller."""
