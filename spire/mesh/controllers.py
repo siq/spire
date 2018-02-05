@@ -147,6 +147,9 @@ class ModelController(Unit, Controller):
                     mapping = cls.resource.filter_schema().keys()
                 cls.mapping = parse_attr_mapping(mapping)
 
+    def validate_request(self, request, response):
+        return True
+
     def acquire(self, subject):
         if self._composite_key:
             try:
@@ -418,6 +421,9 @@ class ProxyController(Unit, Controller):
             cls.mapping = parse_attr_mapping(mapping)
 
             cls.id_field = cls.resource.id_field
+
+    def validate_request(self, request, response):
+        return True
 
     def acquire(self, subject):
         try:
