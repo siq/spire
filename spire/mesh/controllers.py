@@ -144,9 +144,6 @@ class ModelController(Unit, Controller):
                     mapping = cls.resource.filter_schema().keys()
                 cls.mapping = parse_attr_mapping(mapping)
 
-    def validate_request(self, request, response):
-        return True
-
     def acquire(self, subject):
         if self._composite_key:
             try:
@@ -411,9 +408,6 @@ class ProxyController(Unit, Controller):
 
             cls.id_field = cls.resource.id_field
 
-    def validate_request(self, request, response):
-        return True
-
     def acquire(self, subject):
         try:
             return self.proxy_model.get(subject)
@@ -516,7 +510,4 @@ class ProxyController(Unit, Controller):
 
 class UnitController(Unit, Controller, Configurable):
     """A generic unit controller."""
-
-    def validate_request(self, request, response):
-        return True
 
