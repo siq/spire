@@ -1,4 +1,3 @@
-import ast
 from spire.wsgi.util import Middleware
 
 class ContextMiddleware(Middleware):
@@ -29,8 +28,6 @@ class HeaderParser(object):
 
         for name, value in environ.iteritems():
             if name[:length] == prefix:
-                if value != None and len(value)>2 and value[0] == '[':
-                    value = ast.literal_eval(value)
                 context[name[length:].lower().replace('_', '-')] = value
 
 class SessionParser(object):
