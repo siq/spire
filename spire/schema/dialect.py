@@ -21,7 +21,7 @@ class Dialect(object):
         pass
 
     def create_engine(self, url, schema, echo=False):
-        return create_engine(url, echo=echo)
+        return create_engine(url, echo=echo, pool_size=2)
 
     def create_role(self, url, name, **params):
         pass
@@ -76,7 +76,7 @@ class PostgresqlDialect(Dialect):
             self._execute_statement(url, 'create extension hstore')
 
     def create_engine(self, url, schema, echo=False):
-        engine = create_engine(url, echo=echo)
+        engine = create_engine(url, echo=echo, pool_size=2)
         if self.hstore:
             self._register_hstore_converter(engine)
         return engine
