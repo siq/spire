@@ -57,6 +57,12 @@ class SessionBackend(Unit):
                     os.remove(filename)
         return
 
+    def touchsessionfile(self, sessionid):
+        fs = self.store
+        filename = fs.get_session_filename(sessionid)
+        os.utime(filename, None)
+        return
+
 class SessionMiddleware(Unit, Middleware):
     """A session middleware."""
 
