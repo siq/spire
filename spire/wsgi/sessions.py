@@ -22,6 +22,9 @@ class Session(Session):
     def rekey(self):
         self.sid = generate_key()
 
+    def touchSessionFile(self, store):
+        touchsessionfile(store, self.sid)
+
 class SessionBackend(Unit):
     """A session backend."""
 
@@ -58,10 +61,7 @@ class SessionBackend(Unit):
         return
 
     def touchsessionfile(self, sessionid):
-        fs = self.store
-        filename = fs.get_session_filename(sessionid)
-        os.utime(filename, None)
-        return
+        touchsessionfile(self.store, sessionid)
 
 class SessionMiddleware(Unit, Middleware):
     """A session middleware."""
@@ -116,6 +116,7 @@ class SessionMiddleware(Unit, Middleware):
         try:
             return application(environ, injecting_start_response)
         finally:
+            session.touchSessionFile(self.store)
             self.store.save_if_modified(session)
 
     def _construct_cookie(self, session, unset=False):
@@ -150,3 +151,12 @@ class SessionMiddleware(Unit, Middleware):
 
 def get_session(environ):
     return environ.get('request.session')
+
+def touchsessionfile(store, sessionid):
+    fs = store
+    filename = fs.get_session_filename(sessionid)
+    try:
+        os.utime(filename, None)
+        return
+    except:
+        return
