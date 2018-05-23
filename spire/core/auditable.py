@@ -81,7 +81,6 @@ class Auditable(object):
             resource_data['id'] = subject.id
              
         audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
-        audit_data[AUDIT_ATTR_ORIGIN] = origin
         if status == OK:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
         else:
