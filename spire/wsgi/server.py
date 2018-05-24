@@ -1797,7 +1797,7 @@ class HTTPServer(object):
             except: pass
 
             # So everyone can access the socket...
-            try: os.chmod(self.bind_addr, 511) # 0777
+            try: os.chmod(self.bind_addr, 511) # nosec AppScan
             except: pass
 
             info = [(socket.AF_UNIX, socket.SOCK_STREAM, 0, "", self.bind_addr)]
