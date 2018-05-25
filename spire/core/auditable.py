@@ -3,6 +3,7 @@ import uuid
 from spire.core import Unit, adhoc_configure
 
 from mesh.constants import OK, DELETE, POST, PUT
+from mesh.exceptions import AuditCreateError, RequestError
 from audit.constants import *
 from scheme.timezone import current_timestamp
 from scheme.util import format_structure
@@ -62,7 +63,6 @@ class Auditable(object):
         # extract audit relevant details
         actor_id = request.context.get('user-id', '')
         method = request.headers['REQUEST_METHOD']
-        origin = request.headers['HTTP_X_SPIRE_X_FORWARDED_FOR']
         status = response.status or OK
         
         if method == DELETE:
@@ -92,17 +92,24 @@ class Auditable(object):
         _debug('+send_audit_data - response status', status)
         _debug('+send_audit_data - subject id', resource_data.get('id', None))        
         self._prepare_audit_data(method, status, resource_data, audit_data)
-        _debug('+send_audit_data - audit record', format_structure(audit_data))        
+        _debug('+send_audit_data - audit record', str(audit_data))        
         
         # insert rest call to SIQ Audit here!
         # assume that failure to create/write the audit event will throw an exception
         # which we'll deliberately NOT catch, here!
+        #import sys;sys.path.append(r'/siq/env/python/lib/python2.7/site-packages/pydev/pysrc')
+        #import pydevd;pydevd.settrace()
         self._create_audit_event(audit_data)
         
         return correlation_id
     
     def _create_audit_event(self, audit_data):
-        self.AuditEvent.create(**audit_data)
+        # since the following code is NOT calling directly into controller, we must catch
+        # exceptions created therein and ensure they are translated back to an AuditError
+        try:
+            self.AuditEvent.create(**audit_data)
+        except RequestError, exc:
+            raise AuditCreateError(exc.content)
 
     
 def _debug(msg, obj=None, includeStackTrace=False):
