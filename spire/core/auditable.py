@@ -116,12 +116,17 @@ class Auditable(object):
             AUDIT_ATTR_EVENT_DATE: current_timestamp(),
             AUDIT_ATTR_DETAILS: event_details,
             'event_payload': event_payload,
-            AUDIT_ATTR_OPTYPE: OPTYPE_LOGIN,
             AUDIT_ATTR_EVENT_CATEGORY: CATEGORY_AUTHENTICATION
         }
         
         context = environ['request.context']
         
+        close_session = context.get('close-session','false')
+        if close_session == 'true':
+            audit_data[AUDIT_ATTR_OPTYPE] = OPTYPE_LOGOUT
+        else:
+            audit_data[AUDIT_ATTR_OPTYPE] = OPTYPE_LOGIN
+            
         correlation_id = str(uuid.uuid4())
         audit_data[AUDIT_ATTR_CORRELATION_ID]= correlation_id
 
