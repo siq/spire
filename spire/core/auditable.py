@@ -8,6 +8,7 @@ from mesh.exceptions import AuditCreateError, RequestError
 from audit.constants import *
 from scheme.timezone import current_timestamp
 from scheme.util import format_structure
+from bastion.security.constants import CONTEXT_CREDENTIAL_USERNAME, CONTEXT_CREDENTIAL_TYPE
 
 # mesh dependency configuration
 adhoc_configure({
@@ -105,6 +106,64 @@ class Auditable(object):
         
         return correlation_id
     
+    def send_authorization_audit(self, user_id, environ, success ):
+
+        event_details = {}
+        event_payload = {}
+        actor_detail = {}
+        
+        audit_data = {
+            AUDIT_ATTR_EVENT_DATE: current_timestamp(),
+            AUDIT_ATTR_DETAILS: event_details,
+            'event_payload': event_payload,
+            AUDIT_ATTR_OPTYPE: OPTYPE_LOGIN,
+            AUDIT_ATTR_EVENT_CATEGORY: CATEGORY_AUTHENTICATION
+        }
+        
+        context = environ['request.context']
+        
+        correlation_id = str(uuid.uuid4())
+        audit_data[AUDIT_ATTR_CORRELATION_ID]= correlation_id
+
+        if success:
+            audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
+            audit_data[AUDIT_ATTR_ACTOR_ID] = user_id
+        else:
+            audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
+
+            username = context.get(CONTEXT_CREDENTIAL_USERNAME)
+            actor_detail = {
+                ACTOR_DETAIL_USERNAME: username,
+                ACTOR_DETAIL_FIRSTNAME: '',
+                ACTOR_DETAIL_LASTNAME: '',
+                ACTOR_DETAIL_EMAIL: ''
+            }
+            audit_data[AUDIT_ATTR_ACTOR] = actor_detail
+            
+        event_details['type'] = 'authentication'
+        event_details['source_ip'] = context.get('x-forwarded-for','')
+        event_details['target_host'] = environ.get('HTTP_HOST','')
+        
+        credtype = context.get(CONTEXT_CREDENTIAL_TYPE)
+        if credtype is not None:
+            if credtype == 'password':
+                event_details['method'] = AUTHENTICATION_METHOD_LOCAL
+            else:
+                event_details['method'] = AUTHENTICATION_METHOD_LDAP 
+        
+        _debug('+send_audit_data - audit record', str(audit_data))        
+        
+        # insert rest call to SIQ Audit here!
+        # assume that failure to create/write the audit event will throw an exception
+        # which we'll deliberately NOT catch, here!
+        #import sys;sys.path.append(r'/siq/env/python/lib/python2.7/site-packages/pydev/pysrc')
+        #import pydevd;pydevd.settrace()
+        self._create_audit_event(audit_data)
+        
+        return correlation_id
+        
+        
+        
     def _create_audit_event(self, audit_data):
         # since the following code is NOT calling directly into controller, we must catch
         # exceptions created therein and ensure they are translated back to an AuditError
