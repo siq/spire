@@ -56,7 +56,7 @@ class Auditable(object):
         # if so, use it for this audit call, too, if not, create a new one
         correlation_id = str(uuid.uuid4())
         if not resource_data is None:
-            self._validate_payload(resource_data)
+            self.validate_payload(resource_data)
             event_payload.update(resource_data)
             if AUDIT_ATTR_CORRELATION_ID in resource_data:
                 correlation_id = resource_data.pop(AUDIT_ATTR_CORRELATION_ID)
@@ -177,17 +177,18 @@ class Auditable(object):
         except RequestError, exc:
             raise AuditCreateError(exc.content)
 
-    def _validate_payload(self, payload):
+    def validate_payload(self, payload):
         
         """ none of the attributes included in the payload may be of type datetime
             so convert these items to an ISO8601 string representation
+            further, string values may not include any double-quotes, so escape those
         """
         for key, val in payload.iteritems():
-            _debug('++++++++++++++++ checking type of attribute',key)
             if isinstance(val, (datetime, date)):
-                _debug('++++++++++++++++ value is a datetime value',str(val))
                 pattern = '%Y-%m-%dT%H:%M:%SZ'
                 payload[key] = val.strftime(pattern) 
+            if isinstance(val, str):
+                val.replace('"','\\"')
         
 
     
