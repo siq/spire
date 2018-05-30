@@ -115,7 +115,7 @@ class Auditable(object):
         audit_data = {
             AUDIT_ATTR_EVENT_DATE: current_timestamp(),
             AUDIT_ATTR_DETAILS: event_details,
-            'event_payload': event_payload,
+            AUDIT_ATTR_PAYLOAD: event_payload,
             AUDIT_ATTR_EVENT_CATEGORY: CATEGORY_AUTHENTICATION
         }
         
@@ -132,11 +132,13 @@ class Auditable(object):
 
         if success:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
-            audit_data[AUDIT_ATTR_ACTOR_ID] = user_id
         else:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
 
-            username = context.get(CONTEXT_CREDENTIAL_USERNAME)
+        if user_id is not None:
+            audit_data[AUDIT_ATTR_ACTOR_ID] = user_id
+        else:
+            username = context.get(CONTEXT_CREDENTIAL_USERNAME, '')
             actor_detail = {
                 ACTOR_DETAIL_USERNAME: username,
                 ACTOR_DETAIL_FIRSTNAME: '',
@@ -161,8 +163,6 @@ class Auditable(object):
         # insert rest call to SIQ Audit here!
         # assume that failure to create/write the audit event will throw an exception
         # which we'll deliberately NOT catch, here!
-        #import sys;sys.path.append(r'/siq/env/python/lib/python2.7/site-packages/pydev/pysrc')
-        #import pydevd;pydevd.settrace()
         self._create_audit_event(audit_data)
         
         return correlation_id
