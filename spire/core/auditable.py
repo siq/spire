@@ -182,9 +182,12 @@ class Auditable(object):
         
         """ none of the attributes included in the payload may be of type datetime
             so convert these items to an ISO8601 string representation
-            further, string values may not include any double-quotes, so escape those
+            further, string values may not include any double-quotes, so escape those.
+            do the same thing for nested dicts
         """
         for key, val in payload.iteritems():
+            if isinstance(val, dict):
+                self.validate_payload(val)
             if isinstance(val, (datetime, date)):
                 pattern = '%Y-%m-%dT%H:%M:%SZ'
                 payload[key] = val.strftime(pattern) 
