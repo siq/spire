@@ -1,5 +1,6 @@
 import uuid
-from datetime import date, datetime 
+from datetime import date, datetime
+import hashlib 
 
 from spire.core import Unit, adhoc_configure
 
@@ -76,14 +77,28 @@ class Auditable(object):
             # a POST request passing the subject's id, should normally rather be a PUT request
             # so translate that, accordingly
             method = PUT
-                
+        
+        if method == 'TASK':
+            # if the request was submitted by an automated task, 
+            # we expect to find the actual op in data
+            method = resource_data.pop('task_op', POST)
+            actor_detail = {
+                ACTOR_DETAIL_USERNAME: resource_data.pop('task','automated-task'),
+                ACTOR_DETAIL_FIRSTNAME: '',
+                ACTOR_DETAIL_LASTNAME: '',
+                ACTOR_DETAIL_EMAIL: ''
+            }
+            audit_data[AUDIT_ATTR_ACTOR] = actor_detail
+                    
         if subject is None:
             if status == OK and response.content and 'id' in response.content:
                 resource_data['id'] = response.content.get('id')
         else:
             resource_data['id'] = subject.id
-             
-        audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
+        
+        if actor_id != '':     
+            audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
+            
         if status == OK:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
         else:
@@ -190,7 +205,16 @@ class Auditable(object):
                 payload[key] = val.strftime(pattern) 
             if isinstance(val, str):
                 val.replace('"','\\"')
+    
+    def create_correlation_key(self, *digest_attribs):
         
+        hashkey = hashlib.md5()
+        
+        for attr in digest_attribs:
+            hashkey.update(attr)
+        
+        digest = hashkey.hexdigest()
+        return str(uuid.UUID(hex=digest))
 
     
 def _debug(msg, obj=None, includeStackTrace=False):
