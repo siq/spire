@@ -1,5 +1,6 @@
 import uuid
-from datetime import date, datetime 
+from datetime import date, datetime
+import hashlib 
 
 from spire.core import Unit, adhoc_configure
 
@@ -52,16 +53,9 @@ class Auditable(object):
             'event_payload': event_payload,
         }
         
-        # check whether the correlation id is given as part of the data
-        # if so, use it for this audit call, too, if not, create a new one
-        correlation_id = str(uuid.uuid4())
-        if not resource_data is None:
-            self.validate_payload(resource_data)
-            event_payload.update(resource_data)
-            if AUDIT_ATTR_CORRELATION_ID in resource_data:
-                correlation_id = resource_data.pop(AUDIT_ATTR_CORRELATION_ID)
-            
-        audit_data[AUDIT_ATTR_CORRELATION_ID]= correlation_id
+        # create a default correlation id, which may or may not be overwritten
+        # by each controller.
+        audit_data[AUDIT_ATTR_CORRELATION_ID]= str(uuid.uuid4())
         
         # extract audit relevant details
         actor_id = request.context.get('user-id', '')
@@ -76,36 +70,49 @@ class Auditable(object):
             # a POST request passing the subject's id, should normally rather be a PUT request
             # so translate that, accordingly
             method = PUT
+        
+        if method == 'TASK':
+            # if the request was submitted by an automated task, 
+            # we expect to find the actual op in data
+            method = resource_data.pop('task_op', POST)
+            taskname = resource_data.pop('task','automated-task')
+            actor_detail = {
+                ACTOR_DETAIL_USERNAME: taskname,
+                ACTOR_DETAIL_FIRSTNAME: '',
+                ACTOR_DETAIL_LASTNAME: '',
+                ACTOR_DETAIL_EMAIL: ''
+            }
+            audit_data[AUDIT_ATTR_ACTOR] = actor_detail
+        
                 
+        self.validate_payload(resource_data)
+        event_payload.update(resource_data)
+            
         if subject is None:
             if status == OK and response.content and 'id' in response.content:
                 resource_data['id'] = response.content.get('id')
         else:
             resource_data['id'] = subject.id
-             
-        audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
+        
+        if actor_id != '':     
+            audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
+            
         if status == OK:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
         else:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
 
 
-        _debug('+send_audit_data - request actor', str(actor_id))        
-        _debug('+send_audit_data - request method', method)        
-        _debug('+send_audit_data - response status', status)
-        _debug('+send_audit_data - subject id', resource_data.get('id', None))        
+        #_debug('+send_audit_data - request actor', str(actor_id))        
+        #_debug('+send_audit_data - request method', method)        
+        #_debug('+send_audit_data - response status', status)
+        #_debug('+send_audit_data - subject id', resource_data.get('id', None))        
 
         self._prepare_audit_data(method, status, resource_data, audit_data)
-        _debug('+send_audit_data - audit record', str(audit_data))        
+        #_debug('+send_audit_data - audit record', str(audit_data))        
         
-        # insert rest call to SIQ Audit here!
-        # assume that failure to create/write the audit event will throw an exception
-        # which we'll deliberately NOT catch, here!
-        #import sys;sys.path.append(r'/siq/env/python/lib/python2.7/site-packages/pydev/pysrc')
-        #import pydevd;pydevd.settrace()
         self._create_audit_event(audit_data)
-        
-        return correlation_id
+
     
     def send_authorization_audit(self, user_id, environ, success ):
 
@@ -159,7 +166,7 @@ class Auditable(object):
             else:
                 event_details['method'] = AUTHENTICATION_METHOD_LDAP 
         
-        _debug('+send_audit_data - audit record', str(audit_data))        
+        #_debug('+send_audit_data - audit record', str(audit_data))        
         
         # insert rest call to SIQ Audit here!
         # assume that failure to create/write the audit event will throw an exception
@@ -193,9 +200,19 @@ class Auditable(object):
                 payload[key] = val.strftime(pattern) 
             if isinstance(val, str):
                 val.replace('"','\\"')
-        
-
     
+    def create_correlation_key(self, *digest_attribs):
+        
+        hashkey = hashlib.md5()
+        
+        for attr in digest_attribs:
+            hashkey.update(attr)
+        
+        digest = hashkey.hexdigest()
+        return str(uuid.UUID(hex=digest))
+
+
+"""    
 def _debug(msg, obj=None, includeStackTrace=False):
     import datetime
     import inspect
@@ -218,3 +235,4 @@ def _debug(msg, obj=None, includeStackTrace=False):
             for s in traceback.format_stack():
                 fout.write('  ' + s.strip() + '\n')
         fout.flush()
+"""
