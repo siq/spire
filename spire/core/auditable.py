@@ -63,8 +63,8 @@ class Auditable(object):
         status = response.status or OK
         
         if method == DELETE:
-            delsubj = self.acquire(request.subject)
-            resource_data = delsubj.extract_dict()
+            resource_data.update(subject.extract_dict())
+
         
         if method == POST and not subject is None:
             # a POST request passing the subject's id, should normally rather be a PUT request
@@ -89,7 +89,7 @@ class Auditable(object):
         event_payload.update(resource_data)
             
         if subject is None:
-            if status == OK and 'id' in response.content:
+            if status == OK and response.content and 'id' in response.content:
                 resource_data['id'] = response.content.get('id')
         else:
             resource_data['id'] = subject.id
@@ -107,6 +107,7 @@ class Auditable(object):
         _debug('+send_audit_data - request method', method)        
         _debug('+send_audit_data - response status', status)
         _debug('+send_audit_data - subject id', resource_data.get('id', None))        
+
         self._prepare_audit_data(method, status, resource_data, audit_data)
         _debug('+send_audit_data - audit record', str(audit_data))        
         
