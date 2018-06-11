@@ -103,13 +103,13 @@ class Auditable(object):
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
 
 
-        _debug('+send_audit_data - request actor', str(actor_id))        
-        _debug('+send_audit_data - request method', method)        
-        _debug('+send_audit_data - response status', status)
-        _debug('+send_audit_data - subject id', resource_data.get('id', None))        
+        #_debug('+send_audit_data - request actor', str(actor_id))        
+        #_debug('+send_audit_data - request method', method)        
+        #_debug('+send_audit_data - response status', status)
+        #_debug('+send_audit_data - subject id', resource_data.get('id', None))        
 
         self._prepare_audit_data(method, status, resource_data, audit_data)
-        _debug('+send_audit_data - audit record', str(audit_data))        
+        #_debug('+send_audit_data - audit record', str(audit_data))        
         
         self._create_audit_event(audit_data)
 
@@ -166,7 +166,7 @@ class Auditable(object):
             else:
                 event_details['method'] = AUTHENTICATION_METHOD_LDAP 
         
-        _debug('+send_audit_data - audit record', str(audit_data))        
+        #_debug('+send_audit_data - audit record', str(audit_data))        
         
         # insert rest call to SIQ Audit here!
         # assume that failure to create/write the audit event will throw an exception
@@ -208,7 +208,8 @@ class Auditable(object):
         digest = hashkey.hexdigest()
         return str(uuid.UUID(hex=digest))
 
-    
+
+"""    
 def _debug(msg, obj=None, includeStackTrace=False):
     import datetime
     import inspect
@@ -231,3 +232,4 @@ def _debug(msg, obj=None, includeStackTrace=False):
             for s in traceback.format_stack():
                 fout.write('  ' + s.strip() + '\n')
         fout.flush()
+"""
