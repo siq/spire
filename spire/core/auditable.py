@@ -53,16 +53,9 @@ class Auditable(object):
             'event_payload': event_payload,
         }
         
-        # check whether the correlation id is given as part of the data
-        # if so, use it for this audit call, too, if not, create a new one
-        correlation_id = str(uuid.uuid4())
-        if not resource_data is None:
-            self.validate_payload(resource_data)
-            event_payload.update(resource_data)
-            if AUDIT_ATTR_CORRELATION_ID in resource_data:
-                correlation_id = resource_data.pop(AUDIT_ATTR_CORRELATION_ID)
-            
-        audit_data[AUDIT_ATTR_CORRELATION_ID]= correlation_id
+        # create a default correlation id, which may or may not be overwritten
+        # by each controller.
+        audit_data[AUDIT_ATTR_CORRELATION_ID]= str(uuid.uuid4())
         
         # extract audit relevant details
         actor_id = request.context.get('user-id', '')
@@ -82,14 +75,19 @@ class Auditable(object):
             # if the request was submitted by an automated task, 
             # we expect to find the actual op in data
             method = resource_data.pop('task_op', POST)
+            taskname = resource_data.pop('task','automated-task')
             actor_detail = {
-                ACTOR_DETAIL_USERNAME: resource_data.pop('task','automated-task'),
+                ACTOR_DETAIL_USERNAME: taskname,
                 ACTOR_DETAIL_FIRSTNAME: '',
                 ACTOR_DETAIL_LASTNAME: '',
                 ACTOR_DETAIL_EMAIL: ''
             }
             audit_data[AUDIT_ATTR_ACTOR] = actor_detail
-                    
+        
+                
+        self.validate_payload(resource_data)
+        event_payload.update(resource_data)
+            
         if subject is None:
             if status == OK and 'id' in response.content:
                 resource_data['id'] = response.content.get('id')
@@ -112,14 +110,8 @@ class Auditable(object):
         self._prepare_audit_data(method, status, resource_data, audit_data)
         _debug('+send_audit_data - audit record', str(audit_data))        
         
-        # insert rest call to SIQ Audit here!
-        # assume that failure to create/write the audit event will throw an exception
-        # which we'll deliberately NOT catch, here!
-        #import sys;sys.path.append(r'/siq/env/python/lib/python2.7/site-packages/pydev/pysrc')
-        #import pydevd;pydevd.settrace()
         self._create_audit_event(audit_data)
-        
-        return correlation_id
+
     
     def send_authorization_audit(self, user_id, environ, success ):
 
