@@ -77,11 +77,11 @@ class Auditable(object):
             # if the request was submitted by an automated task, 
             # we expect to find the actual op in data
             method = resource_data.pop('task_op', POST)
-            taskname = resource_data.pop('task','automated-task')
+            taskname = resource_data.pop('task','')
             actor_detail = {
-                ACTOR_DETAIL_USERNAME: taskname,
-                ACTOR_DETAIL_FIRSTNAME: '',
-                ACTOR_DETAIL_LASTNAME: '',
+                ACTOR_DETAIL_USERNAME: ACTOR_SYSTEM,
+                ACTOR_DETAIL_FIRSTNAME: 'automated-task',
+                ACTOR_DETAIL_LASTNAME: taskname,
                 ACTOR_DETAIL_EMAIL: ''
             }
             audit_data[AUDIT_ATTR_ACTOR] = actor_detail
