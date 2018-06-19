@@ -62,6 +62,8 @@ class Auditable(object):
         method = request.headers['REQUEST_METHOD']
         status = response.status or OK
         
+        audit_data[AUDIT_ATTR_ORIGIN] = self._get_origin(request.headers)
+        
         if method == DELETE:
             resource_data.update(subject.extract_dict())
 
@@ -102,7 +104,6 @@ class Auditable(object):
         else:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
 
-
         #_debug('+send_audit_data - request actor', str(actor_id))        
         #_debug('+send_audit_data - request method', method)        
         #_debug('+send_audit_data - response status', status)
@@ -126,9 +127,10 @@ class Auditable(object):
             AUDIT_ATTR_PAYLOAD: event_payload,
             AUDIT_ATTR_EVENT_CATEGORY: CATEGORY_AUTHENTICATION
         }
-        
+
+        audit_data[AUDIT_ATTR_ORIGIN] = self._get_origin(environ)
+                
         context = environ['request.context']
-        
         close_session = context.get('close-session','false')
         if close_session == 'true':
             audit_data[AUDIT_ATTR_OPTYPE] = OPTYPE_LOGOUT
@@ -211,8 +213,16 @@ class Auditable(object):
         digest = hashkey.hexdigest()
         return str(uuid.UUID(hex=digest))
 
-
-"""    
+    def _get_origin(self, request_headers):
+        
+        origin = request_headers.get('SERVER_NAME')
+        if not origin or origin == 'localhost':
+            origin = request_headers.get('uwsgi.node')
+            
+        return origin
+    
+    
+"""
 def _debug(msg, obj=None, includeStackTrace=False):
     import datetime
     import inspect
