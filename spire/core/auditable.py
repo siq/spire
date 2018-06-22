@@ -94,7 +94,10 @@ class Auditable(object):
             if status == OK and response.content and 'id' in response.content:
                 resource_data['id'] = response.content.get('id')
         else:
-            resource_data['id'] = subject.id
+            try:
+                resource_data['id'] = subject.id
+            except AttributeError:
+                pass
         
         if actor_id != '':     
             audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
