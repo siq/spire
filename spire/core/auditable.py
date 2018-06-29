@@ -65,7 +65,8 @@ class Auditable(object):
         audit_data[AUDIT_ATTR_ORIGIN] = self._get_origin(request.headers)
         
         if method == DELETE:
-            resource_data.update(subject.extract_dict())
+            if subject:
+                resource_data.update(subject.extract_dict())
 
         
         if method == POST and not subject is None:
@@ -187,7 +188,7 @@ class Auditable(object):
         # exceptions created therein and ensure they are translated back to an AuditError
         try:
             self.AuditEvent.create(**audit_data)
-        except RequestError, exc:
+        except RequestError as exc:
             raise AuditCreateError(exc.content)
 
     def validate_payload(self, payload):
