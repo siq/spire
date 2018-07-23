@@ -3,13 +3,16 @@ from datetime import date, datetime
 import hashlib 
 
 from spire.core import Unit, adhoc_configure
-
+from spire.support.logs import LogHelper
 from mesh.constants import OK, DELETE, POST, PUT
 from mesh.exceptions import AuditCreateError, RequestError
 from audit.constants import *
+from audit.auditconfiguration import AuditConfigParms, AuditConfiguration
 from scheme.timezone import current_timestamp
 from scheme.util import format_structure
 from bastion.security.constants import CONTEXT_CREDENTIAL_USERNAME, CONTEXT_CREDENTIAL_TYPE
+
+log = LogHelper(__name__)
 
 # mesh dependency configuration
 adhoc_configure({
@@ -36,13 +39,31 @@ class Auditable(object):
     bundle = API
     config = ToolDependency()
     AuditEvent = config.audit.bind('audit/1.0/record')
-    
-    
+
+    audit_config = AuditConfiguration()
+        
+    def needs_audit(self, request, subject):
+        return False
+
     def _prepare_audit_data(self, method, status, resource_data, audit_data):
         raise NotImplementedError
     
     def send_audit_data(self, request, response, subject, data):
 
+        # first check, whether auditing is configured for the given
+        # controller at all!
+        if not self.needs_audit(request, subject):
+            return
+
+        _debug('audit configuration: audit_enabled', self.audit_config.get(AuditConfigParms.AUDIT_ENABLED))
+        _debug('audit configuration: audit_auth', self.audit_config.get(AuditConfigParms.AUDIT_AUTH))
+        _debug('audit configuration: audit_volume_ops', self.audit_config.get(AuditConfigParms.AUDIT_VOLUME_OPS))
+        _debug('audit configuration: audit_harvest_ops', self.audit_config.get(AuditConfigParms.AUDIT_HARVEST_OPS))
+        _debug('audit configuration: audit_report_ops', self.audit_config.get(AuditConfigParms.AUDIT_REPORT_OPS))
+        _debug('audit configuration: audit_dataobj_ops', self.audit_config.get(AuditConfigParms.AUDIT_DATAOBJ_OPS))
+        _debug('audit configuration: audit_infoset_ops', self.audit_config.get(AuditConfigParms.AUDIT_INFOSET_OPS))
+        _debug('audit configuration: audit_filter_ops', self.audit_config.get(AuditConfigParms.AUDIT_FILTER_OPS))
+               
         event_details = {}
         event_payload = {}
         resource_data = data or {}
@@ -50,7 +71,7 @@ class Auditable(object):
         audit_data = {
             AUDIT_ATTR_EVENT_DATE: current_timestamp(),
             AUDIT_ATTR_DETAILS: event_details,
-            'event_payload': event_payload,
+            AUDIT_ATTR_PAYLOAD: event_payload,
         }
         
         # create a default correlation id, which may or may not be overwritten
@@ -114,13 +135,26 @@ class Auditable(object):
         #_debug('+send_audit_data - subject id', resource_data.get('id', None))        
 
         self._prepare_audit_data(method, status, resource_data, audit_data)
-        #_debug('+send_audit_data - audit record', str(audit_data))        
+        _debug('+send_audit_data - audit record', str(audit_data))        
         
         self._create_audit_event(audit_data)
 
     
     def send_authorization_audit(self, user_id, environ, success ):
 
+        _debug('audit configuration: audit_enabled', self.audit_config.get(AuditConfigParms.AUDIT_ENABLED))
+        _debug('audit configuration: audit_auth', self.audit_config.get(AuditConfigParms.AUDIT_AUTH))
+        _debug('audit configuration: audit_volume_ops', self.audit_config.get(AuditConfigParms.AUDIT_VOLUME_OPS))
+        _debug('audit configuration: audit_harvest_ops', self.audit_config.get(AuditConfigParms.AUDIT_HARVEST_OPS))
+        _debug('audit configuration: audit_report_ops', self.audit_config.get(AuditConfigParms.AUDIT_REPORT_OPS))
+        _debug('audit configuration: audit_dataobj_ops', self.audit_config.get(AuditConfigParms.AUDIT_DATAOBJ_OPS))
+        _debug('audit configuration: audit_infoset_ops', self.audit_config.get(AuditConfigParms.AUDIT_INFOSET_OPS))
+        _debug('audit configuration: audit_filter_ops', self.audit_config.get(AuditConfigParms.AUDIT_FILTER_OPS))
+               
+        if not self.audit_config.audit_enabled_for(AuditConfigParms.AUDIT_AUTH):
+            log('info', 'auditing for login/logout has been disabled.')
+            return
+        
         event_details = {}
         event_payload = {}
         actor_detail = {}
@@ -181,8 +215,7 @@ class Auditable(object):
         
         return correlation_id
         
-        
-        
+           
     def _create_audit_event(self, audit_data):
         # since the following code is NOT calling directly into controller, we must catch
         # exceptions created therein and ensure they are translated back to an AuditError
@@ -226,7 +259,6 @@ class Auditable(object):
         return origin
     
     
-"""
 def _debug(msg, obj=None, includeStackTrace=False):
     import datetime
     import inspect
@@ -249,4 +281,4 @@ def _debug(msg, obj=None, includeStackTrace=False):
             for s in traceback.format_stack():
                 fout.write('  ' + s.strip() + '\n')
         fout.flush()
-"""
+        
