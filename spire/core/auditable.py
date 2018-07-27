@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 import hashlib 
 
-from spire.core import Unit, adhoc_configure
+from spire.core import Unit, Dependency, adhoc_configure
 from spire.support.logs import LogHelper
 from mesh.constants import OK, DELETE, POST, PUT
 from mesh.exceptions import AuditCreateError, RequestError
@@ -34,13 +34,14 @@ class Auditable(object):
     """ A mixin class which indicates that subclasses are collecting audit information
         and provides basic implementations for the necessary methods
     """
+    audit_config = Dependency(AuditConfiguration)
+
     from audit import API
         
     bundle = API
     config = ToolDependency()
     AuditEvent = config.audit.bind('audit/1.0/record')
 
-    audit_config = AuditConfiguration()
         
     def needs_audit(self, request, subject):
         return False
@@ -52,18 +53,13 @@ class Auditable(object):
 
         # first check, whether auditing is configured for the given
         # controller at all!
+        if not self.is_audit_enabled():
+            log('info','auditing is DISABLED')
+            return
         if not self.needs_audit(request, subject):
+            log('info','auditing for this request is NOT enabled')
             return
 
-        _debug('audit configuration: audit_enabled', self.audit_config.get(AuditConfigParms.AUDIT_ENABLED))
-        _debug('audit configuration: audit_auth', self.audit_config.get(AuditConfigParms.AUDIT_AUTH))
-        _debug('audit configuration: audit_volume_ops', self.audit_config.get(AuditConfigParms.AUDIT_VOLUME_OPS))
-        _debug('audit configuration: audit_harvest_ops', self.audit_config.get(AuditConfigParms.AUDIT_HARVEST_OPS))
-        _debug('audit configuration: audit_report_ops', self.audit_config.get(AuditConfigParms.AUDIT_REPORT_OPS))
-        _debug('audit configuration: audit_dataobj_ops', self.audit_config.get(AuditConfigParms.AUDIT_DATAOBJ_OPS))
-        _debug('audit configuration: audit_infoset_ops', self.audit_config.get(AuditConfigParms.AUDIT_INFOSET_OPS))
-        _debug('audit configuration: audit_filter_ops', self.audit_config.get(AuditConfigParms.AUDIT_FILTER_OPS))
-               
         event_details = {}
         event_payload = {}
         resource_data = data or {}
@@ -135,24 +131,18 @@ class Auditable(object):
         #_debug('+send_audit_data - subject id', resource_data.get('id', None))        
 
         self._prepare_audit_data(method, status, resource_data, audit_data)
-        _debug('+send_audit_data - audit record', str(audit_data))        
+        #_debug('+send_audit_data - audit record', str(audit_data))        
         
         self._create_audit_event(audit_data)
 
     
     def send_authorization_audit(self, user_id, environ, success ):
 
-        _debug('audit configuration: audit_enabled', self.audit_config.get(AuditConfigParms.AUDIT_ENABLED))
-        _debug('audit configuration: audit_auth', self.audit_config.get(AuditConfigParms.AUDIT_AUTH))
-        _debug('audit configuration: audit_volume_ops', self.audit_config.get(AuditConfigParms.AUDIT_VOLUME_OPS))
-        _debug('audit configuration: audit_harvest_ops', self.audit_config.get(AuditConfigParms.AUDIT_HARVEST_OPS))
-        _debug('audit configuration: audit_report_ops', self.audit_config.get(AuditConfigParms.AUDIT_REPORT_OPS))
-        _debug('audit configuration: audit_dataobj_ops', self.audit_config.get(AuditConfigParms.AUDIT_DATAOBJ_OPS))
-        _debug('audit configuration: audit_infoset_ops', self.audit_config.get(AuditConfigParms.AUDIT_INFOSET_OPS))
-        _debug('audit configuration: audit_filter_ops', self.audit_config.get(AuditConfigParms.AUDIT_FILTER_OPS))
-               
-        if not self.audit_config.audit_enabled_for(AuditConfigParms.AUDIT_AUTH):
-            log('info', 'auditing for login/logout has been disabled.')
+        if not self.is_audit_enabled():
+            log('info','auditing is DISABLED')
+            return
+        if not self.is_audit_enabled_for(AuditConfigParms.AUDIT_AUTH):
+            log('info', 'auditing for login/logout is NOT enabled.')
             return
         
         event_details = {}
@@ -258,7 +248,14 @@ class Auditable(object):
             
         return origin
     
+    def is_audit_enabled(self):
+        return self.audit_config.configuration[AuditConfigParms.AUDIT_ENABLED]
     
+    def is_audit_enabled_for(self, component):
+        return (self.audit_config.configuration[AuditConfigParms.AUDIT_ENABLED] and self.audit_config.configuration[component])
+    
+
+"""    
 def _debug(msg, obj=None, includeStackTrace=False):
     import datetime
     import inspect
@@ -281,4 +278,4 @@ def _debug(msg, obj=None, includeStackTrace=False):
             for s in traceback.format_stack():
                 fout.write('  ' + s.strip() + '\n')
         fout.flush()
-        
+"""        
