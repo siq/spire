@@ -46,6 +46,9 @@ class Auditable(object):
     def needs_audit(self, request, subject):
         return False
 
+    def _prepare_audit_data_n(self, method, status, subject, audit_data, add_params):
+        raise NotImplementedError
+
     def _prepare_audit_data(self, method, status, resource_data, audit_data):
         raise NotImplementedError
     
@@ -129,9 +132,106 @@ class Auditable(object):
         #_debug('+send_audit_data - request method', method)        
         #_debug('+send_audit_data - response status', status)
         #_debug('+send_audit_data - subject id', resource_data.get('id', None))        
+        #_debug('+send_audit_data - audit record', str(audit_data))        
 
         self._prepare_audit_data(method, status, resource_data, audit_data)
-        #_debug('+send_audit_data - audit record', str(audit_data))        
+        
+        self._create_audit_event(audit_data)
+    
+    
+    def send_audit_data_n(self, request, response, subject, data, add_params):
+        '''
+        :param request: object containing http request data 
+        :type request: Http request 
+        :param response: response object which contains status information 
+        :type response: Http response   
+        :param subject: object for which a change should be audited 
+        :type subject:  subtype of Controller
+        :param data:   contains the request payload
+        :type data: dictionary
+        :param add_params: additional parameters for processing, set by the calling method, e.g. add_params['optype']=OPTYPE_USER_CREATE  
+        :type add_params:
+        '''
+
+        # first check, whether auditing is configured for the given
+        # controller at all!
+        if not self.is_audit_enabled():
+            log('info','auditing is DISABLED')
+            return
+        if not self.needs_audit(request, subject):
+            log('info','auditing for this request is NOT enabled')
+            return
+
+        event_details = {}
+        event_payload = {}
+        add_params = add_params or {}
+        
+        audit_data = {
+            AUDIT_ATTR_EVENT_DATE: current_timestamp(),
+            AUDIT_ATTR_DETAILS: event_details,
+            AUDIT_ATTR_PAYLOAD: event_payload,
+        }
+        
+        # create a default correlation id, which may or may not be overwritten
+        # by each controller.
+        audit_data[AUDIT_ATTR_CORRELATION_ID]= str(uuid.uuid4())
+        
+        # extract audit relevant details
+        actor_id = request.context.get('user-id', '')
+        method = request.headers['REQUEST_METHOD']
+        status = response.status or OK
+        
+        audit_data[AUDIT_ATTR_ORIGIN] = self._get_origin(request.headers)
+        
+        if method == DELETE:
+            if subject:
+                if data:
+                    data.update(subject.extract_dict())
+                else :
+                    # data is None if this method is called by "delete user" method
+                    data = subject.extract_dict()
+
+        
+        if method == POST and not subject is None:
+            # a POST request passing the subject's id, should normally rather be a PUT request
+            # so translate that, accordingly
+            method = PUT
+        
+        if method == 'TASK':
+            # if the request was submitted by an automated task, 
+            # we expect to find the actual op in data
+            method = add_params.pop('task_op', POST)
+            taskname = add_params.pop('task','')
+            actor_detail = {
+                ACTOR_DETAIL_USERNAME: ACTOR_SYSTEM,
+                ACTOR_DETAIL_FIRSTNAME: 'automated-task',
+                ACTOR_DETAIL_LASTNAME: taskname,
+                ACTOR_DETAIL_EMAIL: ''
+            }
+            audit_data[AUDIT_ATTR_ACTOR] = actor_detail
+        
+                
+        self.validate_payload(data)
+        event_payload.update(data)
+            
+        if subject is None:
+            if status == OK and response.content and 'id' in response.content:
+                add_params['id'] = response.content.get('id')
+        else:
+            try:
+                add_params['id'] = subject.id
+            except AttributeError:
+                pass
+        
+        if actor_id != '':     
+            audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
+            
+        if status == OK:
+            audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
+        else:
+            audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
+
+        self._prepare_audit_data_n(method, status, subject, audit_data, add_params)
         
         self._create_audit_event(audit_data)
 
