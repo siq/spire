@@ -5,11 +5,19 @@ from werkzeug.exceptions import MethodNotAllowed
 from werkzeug.formparser import parse_form_data
 from werkzeug.utils import secure_filename
 
-from spire.core import Configuration, Unit
+from spire.core import Configuration, Unit, Dependency
 from spire.util import uniqid
 from spire.wsgi.util import Mount
 
+from spire.wsgi.sessions import SessionMiddleware
+from spire.context import ContextMiddleware, HeaderParser, SessionParser
+from bastion.security.middleware import RedirectMiddleware
+
 class UploadEndpoint(Mount):
+    session_middleware = Dependency(SessionMiddleware)
+    context_middleware = ContextMiddleware([HeaderParser(), SessionParser()])
+    redirect_middleware = Dependency(RedirectMiddleware)
+
     configuration = Configuration({
         'upload_directory': Text(nonempty=True, default='/tmp'),
     })
