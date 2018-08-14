@@ -47,6 +47,19 @@ class Auditable(object):
         return False
 
     def _prepare_audit_data_n(self, method, status, subject, audit_data, add_params):
+        '''
+        new method called within send_audit_data_n for correcting entries for AuditRecord data
+        @param method: string containing http method, e.g. POST
+        @type method: string
+        @param status: OK or error code, Http return code (200, 500 etc.)
+        @type status: string
+        @param subject: object for which an auditing event should be written 
+        @type subject: subclass of Controller
+        @param audit_data: object with members like event_details and event_payload 
+        @type audit_data: AuditRecord
+        @param add_params:  additional parameters for processing, set by the calling method, e.g. add_params['optype']=OPTYPE_USER_CREATE 
+        @type add_params: dictionary
+        '''
         raise NotImplementedError
 
     def _prepare_audit_data(self, method, status, resource_data, audit_data):
@@ -114,6 +127,13 @@ class Auditable(object):
         if subject is None:
             if status == OK and response.content and 'id' in response.content:
                 resource_data['id'] = response.content.get('id')
+            else: 
+                if request.subject :
+                    ## if this method is called for delete then there is no subject and the object id is 
+                    ## available only via request.subject where request.subject is a string like
+                    ## str: b8dc6fa8-cd70-4927-bcb1-5a4571ececd7  
+                    resource_data['id'] =  request.subject   
+     
         else:
             try:
                 resource_data['id'] = subject.id
@@ -146,7 +166,7 @@ class Auditable(object):
         :param response: response object which contains status information 
         :type response: Http response   
         :param subject: object for which a change should be audited 
-        :type subject:  subtype of Controller
+        :type subject:  subtype of Model
         :param data:   contains the request payload
         :type data: dictionary
         :param add_params: additional parameters for processing, set by the calling method, e.g. add_params['optype']=OPTYPE_USER_CREATE  
@@ -190,7 +210,7 @@ class Auditable(object):
                 else :
                     # data is None if this method is called by "delete user" method
                     data = subject.extract_dict()
-
+                    
         
         if method == POST and not subject is None:
             # a POST request passing the subject's id, should normally rather be a PUT request
@@ -201,7 +221,7 @@ class Auditable(object):
             # if the request was submitted by an automated task, 
             # we expect to find the actual op in data
             method = add_params.pop('task_op', POST)
-            taskname = add_params.pop('task','')
+            taskname = add_params.get('task','')
             actor_detail = {
                 ACTOR_DETAIL_USERNAME: ACTOR_SYSTEM,
                 ACTOR_DETAIL_FIRSTNAME: 'automated-task',
@@ -217,6 +237,12 @@ class Auditable(object):
         if subject is None:
             if status == OK and response.content and 'id' in response.content:
                 add_params['id'] = response.content.get('id')
+            else: 
+                if request.subject :
+                    ## if this method is called for delete then there is no subject and the object id is 
+                    ## available only via request.subject where request.subject is a string like
+                    ## str: b8dc6fa8-cd70-4927-bcb1-5a4571ececd7  
+                    add_params['id'] =  request.subject   
         else:
             try:
                 add_params['id'] = subject.id
