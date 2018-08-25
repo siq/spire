@@ -4,7 +4,7 @@ import hashlib
 
 from spire.core import Unit, Dependency, adhoc_configure
 from spire.support.logs import LogHelper
-from mesh.constants import OK, DELETE, POST, PUT
+from mesh.constants import OK, DELETE, POST, PUT, GONE
 from mesh.exceptions import AuditCreateError, RequestError
 from audit.constants import *
 from audit.auditconfiguration import AuditConfigParms, AuditConfiguration
@@ -44,6 +44,7 @@ class Auditable(object):
 
         
     def needs_audit(self, request, subject):
+        log('debug', ' Auditable needs_audit routine returns false ')
         return False
 
     def _prepare_audit_data_n(self, method, status, subject, audit_data, add_params):
@@ -66,7 +67,6 @@ class Auditable(object):
         raise NotImplementedError
     
     def send_audit_data(self, request, response, subject, data):
-
         # first check, whether auditing is configured for the given
         # controller at all!
         if not self.is_audit_enabled():
@@ -131,9 +131,14 @@ class Auditable(object):
                 if request.subject :
                     ## if this method is called for delete then there is no subject and the object id is 
                     ## available only via request.subject where request.subject is a string like
-                    ## str: b8dc6fa8-cd70-4927-bcb1-5a4571ececd7  
-                    resource_data['id'] =  request.subject   
-     
+                    ## str: b8dc6fa8-cd70-4927-bcb1-5a4571ececd7
+                    ##  
+                    try:
+                        uuid.UUID(request.subject)
+                        resource_data['id'] =  request.subject   
+                    except Exception as e :
+                        log('exception', e)
+                        pass
         else:
             try:
                 resource_data['id'] = subject.id
@@ -155,9 +160,9 @@ class Auditable(object):
         #_debug('+send_audit_data - audit record', str(audit_data))        
 
         self._prepare_audit_data(method, status, resource_data, audit_data)
-        
         self._create_audit_event(audit_data)
     
+  
     
     def send_audit_data_n(self, request, response, subject, data, add_params):
         '''
@@ -241,8 +246,14 @@ class Auditable(object):
                 if request.subject :
                     ## if this method is called for delete then there is no subject and the object id is 
                     ## available only via request.subject where request.subject is a string like
-                    ## str: b8dc6fa8-cd70-4927-bcb1-5a4571ececd7  
-                    add_params['id'] =  request.subject   
+                    ## str: b8dc6fa8-cd70-4927-bcb1-5a4571ececd7
+                    ##  
+                    try:
+                        uuid.UUID(request.subject)
+                        add_params['id'] =  request.subject   
+                    except Exception as e :
+                        log('exception', e)
+                        pass     
         else:
             try:
                 add_params['id'] = subject.id
