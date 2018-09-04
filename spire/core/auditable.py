@@ -158,7 +158,12 @@ class Auditable(object):
         #_debug('+send_audit_data - response status', status)
         #_debug('+send_audit_data - subject id', resource_data.get('id', None))        
         #_debug('+send_audit_data - audit record', str(audit_data))        
-
+        
+        ## in case of an exception in credentialreset there is no value for logon
+        ## user and we must check the request header for information on origin
+        ## BUT the polymorphic prepare routines gets no request object
+        if actor_id == '' :  
+            data['x-forwarded-for']= request.context.get('x-forwarded-for','unknown')
         self._prepare_audit_data(method, status, resource_data, audit_data)
         self._create_audit_event(audit_data)
     
@@ -262,6 +267,12 @@ class Auditable(object):
         
         if actor_id != '':     
             audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
+
+        ## in case of an exception in credentialreset there is no value for logon
+        ## user and we must check the request header for information on origin
+        ## BUT the polymorphic prepare routines gets no request object
+        if actor_id == ''   :
+            add_params['x-forwarded-for']= request.context.get('x-forwarded-for','unknown')
             
         if status == OK:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
