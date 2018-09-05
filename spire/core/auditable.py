@@ -240,9 +240,10 @@ class Auditable(object):
             }
             audit_data[AUDIT_ATTR_ACTOR] = actor_detail
         
-                
-        self.validate_payload(data)
-        event_payload.update(data)
+        
+        if data:        
+            self.validate_payload(data)
+            event_payload.update(data)
             
         if subject is None:
             if status == OK and response.content and 'id' in response.content:
@@ -369,6 +370,9 @@ class Auditable(object):
             further, string values may not include any double-quotes, so escape those.
             do the same thing for nested dicts
         """
+        if not payload:
+            return
+        
         for key, val in payload.iteritems():
             if isinstance(val, dict):
                 self.validate_payload(val)
