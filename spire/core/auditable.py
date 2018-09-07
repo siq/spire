@@ -46,9 +46,9 @@ class Auditable(object):
     def needs_audit(self, request, subject):
         return False
 
-    def _prepare_audit_data_n(self, method, status, subject, audit_data, add_params):
+    def _prepare_audit_data(self, method, status, subject, audit_data, add_params):
         '''
-        new method called within send_audit_data_n for correcting entries for AuditRecord data
+        new method called within send_audit_data for correcting entries for AuditRecord data
         @param method: string containing http method, e.g. POST
         @type method: string
         @param status: OK or error code, Http return code (200, 500 etc.)
@@ -62,7 +62,7 @@ class Auditable(object):
         '''
         raise NotImplementedError
 
-    def send_audit_data_n(self, request, response, subject, data, add_params):
+    def send_audit_data(self, request, response, subject, data, add_params):
         '''
         :param request: object containing http request data 
         :type request: Http request 
@@ -172,7 +172,7 @@ class Auditable(object):
         else:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
 
-        self._prepare_audit_data_n(method, status, subject, audit_data, add_params)
+        self._prepare_audit_data(method, status, subject, audit_data, add_params)
         
         self._create_audit_event(audit_data)
 
