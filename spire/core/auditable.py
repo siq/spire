@@ -44,12 +44,11 @@ class Auditable(object):
 
         
     def needs_audit(self, request, subject):
-        log('debug', ' Auditable needs_audit routine returns false ')
         return False
 
-    def _prepare_audit_data_n(self, method, status, subject, audit_data, add_params):
+    def _prepare_audit_data(self, method, status, subject, audit_data, add_params):
         '''
-        new method called within send_audit_data_n for correcting entries for AuditRecord data
+        new method called within send_audit_data for correcting entries for AuditRecord data
         @param method: string containing http method, e.g. POST
         @type method: string
         @param status: OK or error code, Http return code (200, 500 etc.)
@@ -63,113 +62,7 @@ class Auditable(object):
         '''
         raise NotImplementedError
 
-    def _prepare_audit_data(self, method, status, resource_data, audit_data):
-        raise NotImplementedError
-    
-    def send_audit_data(self, request, response, subject, data):
-        # first check, whether auditing is configured for the given
-        # controller at all!
-        if not self.is_audit_enabled():
-            log('info','auditing is DISABLED')
-            return
-        if not self.needs_audit(request, subject):
-            log('info','auditing for this request is NOT enabled')
-            return
-
-        event_details = {}
-        event_payload = {}
-        resource_data = data or {}
-        
-        audit_data = {
-            AUDIT_ATTR_EVENT_DATE: current_timestamp(),
-            AUDIT_ATTR_DETAILS: event_details,
-            AUDIT_ATTR_PAYLOAD: event_payload,
-        }
-        
-        # create a default correlation id, which may or may not be overwritten
-        # by each controller.
-        audit_data[AUDIT_ATTR_CORRELATION_ID]= str(uuid.uuid4())
-        
-        # extract audit relevant details
-        actor_id = request.context.get('user-id', '')
-        method = request.headers['REQUEST_METHOD']
-        status = response.status or OK
-        
-        audit_data[AUDIT_ATTR_ORIGIN] = self._get_origin(request.headers)
-        
-        if method == DELETE:
-            if subject:
-                resource_data.update(subject.extract_dict())
-
-        
-        if method == POST and not subject is None:
-            # a POST request passing the subject's id, should normally rather be a PUT request
-            # so translate that, accordingly
-            method = PUT
-        
-        if method == 'TASK':
-            # if the request was submitted by an automated task, 
-            # we expect to find the actual op in data
-            method = resource_data.pop('task_op', POST)
-            taskname = resource_data.pop('task','')
-            actor_detail = {
-                ACTOR_DETAIL_USERNAME: ACTOR_SYSTEM,
-                ACTOR_DETAIL_FIRSTNAME: 'automated-task',
-                ACTOR_DETAIL_LASTNAME: taskname,
-                ACTOR_DETAIL_EMAIL: ''
-            }
-            audit_data[AUDIT_ATTR_ACTOR] = actor_detail
-        
-                
-        self.validate_payload(resource_data)
-        event_payload.update(resource_data)
-            
-        if subject is None:
-            if status == OK and response.content and 'id' in response.content:
-                resource_data['id'] = response.content.get('id')
-            else: 
-                if request.subject :
-                    ## if this method is called for delete then there is no subject and the object id is 
-                    ## available only via request.subject where request.subject is a string like
-                    ## str: b8dc6fa8-cd70-4927-bcb1-5a4571ececd7
-                    ##  
-                    try:
-                        uuid.UUID(request.subject)
-                        resource_data['id'] =  request.subject   
-                    except Exception as e :
-                        log('exception', e)
-                        pass
-        else:
-            try:
-                resource_data['id'] = subject.id
-            except AttributeError:
-                pass
-        
-        if actor_id != '':     
-            audit_data[AUDIT_ATTR_ACTOR_ID] = actor_id
-            
-        if status == OK:
-            audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_SUCCESS
-        else:
-            audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
-
-        #_debug('+send_audit_data - request actor', str(actor_id))        
-        #_debug('+send_audit_data - request method', method)        
-        #_debug('+send_audit_data - response status', status)
-        #_debug('+send_audit_data - subject id', resource_data.get('id', None))        
-        #_debug('+send_audit_data - audit record', str(audit_data))        
-        
-        ## in case of an exception in credentialreset there is no value for logon
-        ## user and we must check the request header for information on origin
-        ## BUT the polymorphic prepare routines gets no request object
-        if actor_id == '' :  
-            data['x-forwarded-for']= request.context.get('x-forwarded-for','unknown')
-        self._prepare_audit_data(method, status, resource_data, audit_data)
-        self._create_audit_event(audit_data)
-    
-  
-    
-    def send_audit_data_n(self, request, response, subject, data, add_params):
+    def send_audit_data(self, request, response, subject, data, add_params):
         '''
         :param request: object containing http request data 
         :type request: Http request 
@@ -220,9 +113,8 @@ class Auditable(object):
                 else :
                     # data is None if this method is called by "delete user" method
                     data = subject.extract_dict()
-                    
-        
-        if method == POST and not subject is None:
+
+        if method == POST and request.subject:
             # a POST request passing the subject's id, should normally rather be a PUT request
             # so translate that, accordingly
             method = PUT
@@ -280,7 +172,7 @@ class Auditable(object):
         else:
             audit_data[AUDIT_ATTR_RESULT] = REQ_RESULT_FAILED
 
-        self._prepare_audit_data_n(method, status, subject, audit_data, add_params)
+        self._prepare_audit_data(method, status, subject, audit_data, add_params)
         
         self._create_audit_event(audit_data)
 
