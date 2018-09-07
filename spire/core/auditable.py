@@ -251,7 +251,6 @@ class Auditable(object):
         # since the following code is NOT calling directly into controller, we must catch
         # exceptions created therein and ensure they are translated back to an AuditError
         try:
-            log('debug','===> audit_data = %s' % str(audit_data))
             self.AuditEvent.create(**audit_data)
         except RequestError as exc:
             raise AuditCreateError(exc.content)
